@@ -1,0 +1,14 @@
+# توحيد نهايات الأسطر: LF في المستودع، وتحويل تلقائي في نسخة العمل على Windows
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+
+pnpm-lock.yaml -diff linguist-generated=true
+packages/types/src/database.types.ts linguist-generated=true

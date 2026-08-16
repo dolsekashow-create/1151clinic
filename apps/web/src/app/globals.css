@@ -1,0 +1,193 @@
+@import 'tailwindcss';
+
+/* مسح أصناف Tailwind داخل حزمة نظام التصميم (خارج مجلد التطبيق) */
+@source '../../../../packages/ui/src';
+
+/* دعم التبديل اليدوي للوضع الداكن لاحقًا عبر إضافة الصنف `dark` على <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   Design Tokens
+   المصدر الوحيد لألوان النظام. المكوّنات تستهلك الأسماء المنطقية فقط
+   (bg-primary, text-muted-foreground …) ولا تكتب قيم ألوان مباشرة.
+   ========================================================================== */
+
+:root {
+  --radius: 0.5rem;
+
+  --background: oklch(0.985 0.002 250);
+  --foreground: oklch(0.21 0.02 255);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.02 255);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.02 255);
+
+  --primary: oklch(0.52 0.14 250);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.96 0.008 250);
+  --secondary-foreground: oklch(0.28 0.02 255);
+
+  --muted: oklch(0.965 0.005 250);
+  --muted-foreground: oklch(0.52 0.02 255);
+
+  --accent: oklch(0.95 0.03 220);
+  --accent-foreground: oklch(0.28 0.05 250);
+
+  --destructive: oklch(0.58 0.2 27);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success: oklch(0.58 0.13 155);
+  --success-foreground: oklch(0.99 0 0);
+
+  --warning: oklch(0.68 0.15 70);
+  --warning-foreground: oklch(0.21 0.02 255);
+
+  --info: oklch(0.58 0.12 240);
+  --info-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.91 0.008 255);
+  --input: oklch(0.87 0.01 255);
+  --ring: oklch(0.52 0.14 250);
+
+  --sidebar: oklch(0.24 0.025 258);
+  --sidebar-foreground: oklch(0.93 0.01 250);
+  --sidebar-muted: oklch(0.68 0.02 250);
+  --sidebar-border: oklch(0.32 0.02 258);
+  --sidebar-accent: oklch(0.33 0.04 255);
+}
+
+.dark {
+  --background: oklch(0.17 0.015 258);
+  --foreground: oklch(0.94 0.008 250);
+
+  --card: oklch(0.21 0.018 258);
+  --card-foreground: oklch(0.94 0.008 250);
+
+  --popover: oklch(0.21 0.018 258);
+  --popover-foreground: oklch(0.94 0.008 250);
+
+  --primary: oklch(0.68 0.13 250);
+  --primary-foreground: oklch(0.17 0.015 258);
+
+  --secondary: oklch(0.27 0.02 258);
+  --secondary-foreground: oklch(0.94 0.008 250);
+
+  --muted: oklch(0.26 0.018 258);
+  --muted-foreground: oklch(0.68 0.015 250);
+
+  --accent: oklch(0.3 0.04 250);
+  --accent-foreground: oklch(0.94 0.008 250);
+
+  --destructive: oklch(0.62 0.19 27);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success: oklch(0.66 0.13 155);
+  --warning: oklch(0.75 0.14 70);
+  --info: oklch(0.66 0.12 240);
+
+  --border: oklch(0.3 0.018 258);
+  --input: oklch(0.34 0.018 258);
+  --ring: oklch(0.68 0.13 250);
+
+  --sidebar: oklch(0.15 0.015 258);
+  --sidebar-foreground: oklch(0.93 0.01 250);
+  --sidebar-muted: oklch(0.62 0.02 250);
+  --sidebar-border: oklch(0.26 0.018 258);
+  --sidebar-accent: oklch(0.28 0.03 255);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+
+  --font-sans:
+    var(--font-arabic), 'Segoe UI', Tahoma, ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+/* ==========================================================================
+   الأساسيات
+   ========================================================================== */
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    /* الاتجاه يُضبط على <html> في التخطيط (dir="rtl") */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    /* تمكين الأرقام الجدولية في السياقات الرقمية عبر الصنف tabular-nums */
+    font-feature-settings: 'kern';
+  }
+
+  /* حلقة تركيز واضحة — النظام يُستخدم بلوحة المفاتيح لساعات طويلة */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* شريط تمرير أنحف داخل الجداول الطويلة */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+}
+
+@layer utilities {
+  /* أرقام لاتينية داخل نص عربي — مطلوبة في الجداول والمبالغ */
+  .numeric-latin {
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+}

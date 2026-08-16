@@ -1,0 +1,12 @@
+{
+  "name": "@erp/config",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "tsconfig"
+  ],
+  "scripts": {
+    "lint": "echo \"no lint for config package\"",
+    "typecheck": "echo \"no typecheck for config package\""
+  }
+}

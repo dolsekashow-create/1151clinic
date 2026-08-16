@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck · Lint · Test · Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+
+      - run: pnpm build
+        env:
+          # قيم بناء فقط — لا أسرار. الاتصال الفعلي يتم وقت التشغيل.
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+  secrets-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fail if a .env file is committed
+        run: |
+          if git ls-files | grep -E '(^|/)\.env(\.|$)' | grep -v '\.env\.example$'; then
+            echo "::error::ملف بيئة مُرفوع إلى المستودع — أزِله فورًا وأبطِل المفاتيح."
+            exit 1
+          fi
+
+      - name: Scan for Supabase service_role keys
+        run: |
+          if grep -rInE 'service_role|SUPABASE_SERVICE_ROLE_KEY\s*=\s*ey' \
+              --include='*.ts' --include='*.tsx' --include='*.js' --include='*.json' \
+              --exclude-dir=node_modules --exclude-dir=.git . \
+              | grep -v 'docs/' | grep -v '\.env\.example' | grep -v 'admin.ts' | grep -v 'env.ts'; then
+            echo "::error::إشارة محتملة لمفتاح service_role خارج المواضع المسموح بها."
+            exit 1
+          fi

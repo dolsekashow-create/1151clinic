@@ -1,0 +1,47 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# env & secrets  (NEVER commit real credentials)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# supabase local
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+
+# testing
+coverage/
+.vitest/
+playwright-report/
+test-results/
+
+# editors / os
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.recommended.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# vercel
+.vercel
