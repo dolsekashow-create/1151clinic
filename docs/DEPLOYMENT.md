@@ -64,6 +64,65 @@ supabase start
 
 ثم `pnpm db:reset`.
 
+## 2.1 حالة بيئة التطوير/الاختبار (Development / Staging)
+
+آخر تحقق: **2026-08-17**
+
+| البند | الحالة |
+|-------|--------|
+| Project Ref | `aaqofsfgizkeiwusmckk` |
+| Project URL | `https://aaqofsfgizkeiwusmckk.supabase.co` |
+| Publishable Key | ✅ **صالح** — تم التحقق منه فعليًا |
+| GoTrue (Auth) | ✅ يعمل — الإصدار `v2.195.0` |
+| اتصال التطبيق (`/api/health`) | ✅ `status: ok` · زمن استجابة ~284ms |
+| حماية المسارات | ✅ `/dashboard` → 307 → `/login` |
+| Supabase CLI | ❌ **غير مثبت** على الجهاز |
+| ربط المشروع (`supabase link`) | ❌ غير مرتبط (`supabase/.temp` غير موجود) |
+| ترحيلاتنا مُطبَّقة على البعيد | ❌ **لا** — صفر من 8 |
+
+### ⚠️ قاعدة البيانات البعيدة **ليست فارغة** — وتحتوي مخططًا مختلفًا
+
+المشروع يحتوي بالفعل على مخطط سابق **لا يطابق ترحيلاتنا**، رغم تشابه بعض أسماء الجداول:
+
+| موجود على البعيد (15 جدولًا) | غير موجود (يخصّ ترحيلاتنا) |
+|------------------------------|------------------------------|
+| `organizations` · `branches` · `departments` · `profiles` · `roles` · `permissions` · `role_permissions` · `user_roles` · `user_branches` · `customers` · `services` · `appointments` · `items` · `warehouses` · `stock_movements` · `stock_levels` · `files` · `audit_logs` | `treasuries` · `shifts` · `financial_transactions` · `financial_entries` · `treasury_movements` · `custody_handovers` · `suppliers` · `purchase_orders` · `goods_receipt_items` · `appointment_statuses` · `notification_templates` … |
+
+**فروق الأعمدة تُثبت أنه مخطط مختلف لا نسخة أقدم من مخططنا:**
+
+| الجدول | البعيد | ترحيلاتنا |
+|--------|--------|-----------|
+| `organizations` | `name`, `name_en`, `slug` | `name_ar`, `name_en`, `code` |
+| `profiles` | `full_name` | `full_name_ar`, `is_service_provider` |
+| `customers` | **بلا `branch_id`** | `branch_id` **not null** — أساس عزل الفروع |
+| `branches` | `name` | `name_ar`, `city`, `timezone` |
+| `permissions` | بلا `id`، بلا `module` | `id`, `key`, `module`, `action` |
+
+### 🔴 خطر تطبيق الترحيلات على هذه الحالة
+
+ترحيلاتنا تستخدم `create table if not exists`. لذلك **لن تفشل بصوت عالٍ** — بل:
+
+1. ستتخطى الجداول الـ15 الموجودة **بصمت** وتُبقي أعمدتها القديمة.
+2. ستنشئ الجداول الناقصة فقط ⇒ **مخطط هجين مكسور**.
+3. ثم تفشل عند `app.apply_rls('customers', …)` لأن السياسة تشير إلى
+   `customers.branch_id` غير الموجود ⇒ **توقّف في المنتصف وحالة جزئية**.
+
+**⛔ لا تُطبَّق أي ترحيلات قبل حسم حالة المخطط القائم.**
+
+### ما لا يمكن تحديده بمفتاح Publishable
+
+عدد الصفوف الظاهر = **0** في كل الجداول، لكن هذا **لا يُثبت أنها فارغة**:
+RLS يحجب الصفوف عن الجلسة غير المصادَقة، والنتيجة نفسها في الحالتين.
+الجزم يتطلب `SUPABASE_SECRET_KEY` أو وصولًا مباشرًا لقاعدة البيانات.
+
+### ملاحظات أمنية على المشروع البعيد
+
+| البند | القيمة الحالية | التوصية |
+|-------|----------------|---------|
+| `disable_signup` | **`false`** ⚠️ | التسجيل الذاتي **مفتوح**: أي شخص يملك المفتاح العام ينشئ حسابًا. `supabase/config.toml` لدينا يضبطه `false` لكنه يخص التشغيل المحلي فقط. **عطّله من لوحة التحكم.** |
+| `mailer_autoconfirm` | `false` | تأكيد البريد مطلوب ⇒ إنشاء مستخدمي التجربة يتم من اللوحة لا بالتسجيل الذاتي |
+| مزودو الدخول | `email: true` · `phone: false` | البريد فقط — يوافق افتراض التطوير AS-03 |
+
 ## 3. البيئات
 
 | البيئة | الفرع | Supabase | الرابط |
