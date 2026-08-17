@@ -48,3 +48,6 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# اعتمادات مستخدمي التجربة — ممنوع رفعها
+.demo-credentials/

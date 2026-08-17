@@ -30,6 +30,8 @@ insert into public.permissions (key, module, action, name_ar, is_sensitive) valu
   ('services.view', 'services', 'view', 'عرض الخدمات', false),
   ('services.create', 'services', 'create', 'إضافة خدمة', false),
   ('services.update', 'services', 'update', 'تعديل خدمة', false),
+  ('services.providers.view', 'services', 'providers.view', 'عرض مقدّمي الخدمة', false),
+  ('services.providers.manage', 'services', 'providers.manage', 'إدارة مقدّمي الخدمة', false),
   ('appointments.view', 'appointments', 'view', 'عرض الحجوزات', false),
   ('appointments.create', 'appointments', 'create', 'إنشاء حجز', false),
   ('appointments.update', 'appointments', 'update', 'تعديل حجز', false),
@@ -109,6 +111,7 @@ select r.id, p.id from public.roles r join public.permissions p on p.key in (
   'customers.create',
   'customers.update',
   'services.view',
+  'services.providers.view',
   'appointments.view',
   'appointments.create',
   'appointments.update',
@@ -128,6 +131,7 @@ select r.id, p.id from public.roles r join public.permissions p on p.key in (
   'customers.create',
   'customers.update',
   'services.view',
+  'services.providers.view',
   'appointments.view',
   'appointments.create',
   'appointments.update',
@@ -182,6 +186,7 @@ insert into public.role_permissions (role_id, permission_id)
 select r.id, p.id from public.roles r join public.permissions p on p.key in (
   'customers.view',
   'services.view',
+  'services.providers.view',
   'appointments.view'
 ) where r.key = 'employee' and r.organization_id is null
 on conflict do nothing;

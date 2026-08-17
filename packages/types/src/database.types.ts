@@ -4,7 +4,7 @@
  * ⚠️  ملف مُولّد آليًا — لا تُعدّله يدويًا.
  *     التوليد: pnpm db:types:generate   (يشتقّ الأنواع من supabase/migrations)
  *
- * عدد الجداول: 42
+ * عدد الجداول: 44
  */
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
@@ -1176,7 +1176,6 @@ export type Database = {
           department_id: string | null;
           default_branch_id: string | null;
           status: string;
-          is_service_provider: boolean;
           created_at: string;
           updated_at: string;
           created_by: string | null;
@@ -1194,7 +1193,6 @@ export type Database = {
           department_id?: string | null;
           default_branch_id?: string | null;
           status?: string;
-          is_service_provider?: boolean;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
@@ -1212,12 +1210,35 @@ export type Database = {
           department_id?: string | null;
           default_branch_id?: string | null;
           status?: string;
-          is_service_provider?: boolean;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
           updated_by?: string | null;
           deleted_at?: string | null;
+        };
+        Relationships: [];
+      };
+      provider_branches: {
+        Row: {
+          provider_id: string;
+          branch_id: string;
+          is_primary: boolean;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          provider_id: string;
+          branch_id: string;
+          is_primary?: boolean;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          provider_id?: string;
+          branch_id?: string;
+          is_primary?: boolean;
+          created_at?: string;
+          created_by?: string | null;
         };
         Relationships: [];
       };
@@ -1479,6 +1500,66 @@ export type Database = {
           updated_at?: string;
           created_by?: string | null;
           updated_by?: string | null;
+        };
+        Relationships: [];
+      };
+      service_providers: {
+        Row: {
+          id: string;
+          organization_id: string;
+          branch_id: string | null;
+          code: string;
+          full_name_ar: string;
+          full_name_en: string | null;
+          specialty: string | null;
+          phone: string | null;
+          email: string | null;
+          profile_id: string | null;
+          status: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          branch_id?: string | null;
+          code: string;
+          full_name_ar: string;
+          full_name_en?: string | null;
+          specialty?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          profile_id?: string | null;
+          status?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+          deleted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          branch_id?: string | null;
+          code?: string;
+          full_name_ar?: string;
+          full_name_en?: string | null;
+          specialty?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          profile_id?: string | null;
+          status?: string;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+          deleted_at?: string | null;
         };
         Relationships: [];
       };

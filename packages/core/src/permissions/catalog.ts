@@ -61,6 +61,9 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     ['view', 'عرض الخدمات'],
     ['create', 'إضافة خدمة'],
     ['update', 'تعديل خدمة'],
+    // مقدّمو الخدمة (الأطباء) كيان تشغيلي مستقل عن حسابات المستخدمين — RQ-02
+    ['providers.view', 'عرض مقدّمي الخدمة'],
+    ['providers.manage', 'إدارة مقدّمي الخدمة'],
   ]),
 
   ...define('appointments', [
@@ -159,6 +162,7 @@ export const INITIAL_ROLES: readonly RoleSeed[] = [
       'customers.create',
       'customers.update',
       'services.view',
+      'services.providers.view',
       'appointments.view',
       'appointments.create',
       'appointments.update',
@@ -179,6 +183,7 @@ export const INITIAL_ROLES: readonly RoleSeed[] = [
       'customers.create',
       'customers.update',
       'services.view',
+      'services.providers.view',
       'appointments.view',
       'appointments.create',
       'appointments.update',
@@ -234,6 +239,6 @@ export const INITIAL_ROLES: readonly RoleSeed[] = [
     key: 'employee',
     nameAr: 'موظف',
     isSystem: false,
-    permissions: ['customers.view', 'services.view', 'appointments.view'],
+    permissions: ['customers.view', 'services.view', 'services.providers.view', 'appointments.view'],
   },
 ] as const;
