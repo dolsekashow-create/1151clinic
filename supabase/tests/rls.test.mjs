@@ -241,6 +241,46 @@ describe('منع تصعيد الصلاحيات', () => {
     assert.ok(error, 'المستخدم نقل نفسه لمنشأة أخرى');
   });
 
+  /*
+    انحدار لخلل مُكتشَف عند أول تشغيل فعلي: المستخدم لم يستطع قراءة صلاحياته
+    الخاصة لأن سياسة role_permissions تشترط identity.roles.view ⇒ سياق الجلسة
+    يُبنى بقائمة صلاحيات فارغة فتخفي الواجهة كل شيء.
+  */
+  it('المستخدم يقرأ صلاحيات دوره الخاص بلا identity.roles.view', async () => {
+    const { rows } = await asUser(
+      client,
+      IDS.userA1,
+      `select count(*)::int as n
+         from public.role_permissions rp
+         join public.user_roles ur on ur.role_id = rp.role_id
+        where ur.user_id = $1`,
+      [IDS.userA1],
+    );
+    assert.ok(rows[0].n > 0, 'المستخدم لا يرى صلاحياته ⇒ التطبيق سيظنّه بلا صلاحيات');
+  });
+
+  it('المستخدم لا يرى صلاحيات دور لا يحمله', async () => {
+    const { rows: other } = await client.query(
+      "select id from public.roles where key = 'company_admin' and organization_id is null",
+    );
+    const { rows } = await asUser(
+      client,
+      IDS.userA1,
+      'select count(*)::int as n from public.role_permissions where role_id = $1',
+      [other[0].id],
+    );
+    assert.equal(rows[0].n, 0, 'تسريب صلاحيات دور آخر');
+  });
+
+  it('المستخدم يقرأ اسم دوره الخاص فقط', async () => {
+    const { rows } = await asUser(client, IDS.userA1, 'select key from public.roles order by key');
+    assert.deepEqual(
+      rows.map((r) => r.key).sort(),
+      ['accountant', 'reception', 'warehouse_manager'],
+      'يجب أن يرى أدواره الثلاثة فقط',
+    );
+  });
+
   it('المستخدم يقرأ ملفه الشخصي دائمًا', async () => {
     const { rows } = await asUser(client, IDS.userReadOnly, 'select id from public.profiles where id = $1', [
       IDS.userReadOnly,

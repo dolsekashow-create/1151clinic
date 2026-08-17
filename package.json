@@ -26,9 +26,11 @@
     "db:stop": "supabase stop",
     "db:push": "supabase db push",
     "demo:plan": "node scripts/seed-demo.mjs --dry-run",
-    "demo:seed": "node scripts/seed-demo.mjs --confirm"
+    "demo:seed": "node scripts/seed-demo.mjs --confirm",
+    "demo:verify": "node scripts/verify-demo.mjs"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.112.3",
     "embedded-postgres": "18.4.0-beta.17",
     "pg": "^8.23.0",
     "prettier": "^3.3.3",

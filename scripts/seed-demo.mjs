@@ -238,7 +238,15 @@ const NOTIFICATION_TEMPLATES = [
   { key: 'appointment_reminder', channel: 'sms', subject: null, body: 'عميلنا {{name}}، نذكّرك بموعدك في {{branch}} يوم {{date}} الساعة {{time}}.', vars: ['name', 'branch', 'date', 'time'] },
   { key: 'appointment_confirmed', channel: 'sms', subject: null, body: 'تم تأكيد موعدك في {{branch}} يوم {{date}}. شكرًا لك.', vars: ['branch', 'date'] },
   { key: 'appointment_cancelled', channel: 'sms', subject: null, body: 'نعتذر، تم إلغاء موعدك يوم {{date}}. للحجز مرة أخرى تواصل معنا.', vars: ['date'] },
-  { key: 'shift_closed_notice', channel: 'in_app', subject: 'إغلاق وردية', body: 'تم إغلاق وردية {{shift}} في {{branch}}.', vars: ['shift', 'branch'] },
+  /*
+    ⚠️ ملاحظة على المخطط (لم تُصلَح — تحتاج قرار العميل):
+       notifications.channel        تسمح بـ in_app
+       notification_templates.channel لا تسمح بـ in_app
+    ⇒ الإشعار داخل النظام لا يستطيع امتلاك قالب. تعارض بين الجدولين.
+    الحل يتطلب ترحيلًا جديدًا يضيف 'in_app' إلى قيد القوالب — غير مُنفَّذ.
+    مؤقتًا: هذا القالب بقناة email (مسموحة) حتى يُحسم القرار.
+  */
+  { key: 'shift_closed_notice', channel: 'email', subject: 'إغلاق وردية', body: 'تم إغلاق وردية {{shift}} في {{branch}}.', vars: ['shift', 'branch'] },
 ];
 
 /* ========================================================================== */
@@ -457,11 +465,21 @@ async function run() {
     return;
   }
 
+  /**
+   * الجداول الدفترية (append-only) لا تقبل UPDATE — محفّز يرفضه.
+   * لذلك إعادة التشغيل عليها يجب أن تكون «تجاهل الموجود» لا «حدّث الموجود».
+   * استخدام upsert عليها يفشل بـ: «هذا السجل غير قابل للتعديل أو الحذف».
+   */
+  const LEDGER_TABLES = new Set(['stock_movements', 'treasury_movements', 'financial_transactions']);
+
   const up = async (table, rows, onConflict) => {
     if (rows.length === 0) return;
-    const { error } = await db.from(table).upsert(rows, { onConflict, ignoreDuplicates: false });
+    const insertOnly = LEDGER_TABLES.has(table);
+    const { error } = await db
+      .from(table)
+      .upsert(rows, { onConflict, ignoreDuplicates: insertOnly });
     if (error) throw new Error(`${table}: ${error.message}`);
-    console.log(`  ✔ ${table.padEnd(26)} ${rows.length}`);
+    console.log(`  ✔ ${table.padEnd(26)} ${rows.length}${insertOnly ? '  (دفتر: إدراج فقط)' : ''}`);
   };
 
   console.log('\n▶ المرحلة 0 — البيانات المرجعية');
@@ -537,9 +555,20 @@ async function run() {
   const { data: userList } = await db.auth.admin.listUsers({ perPage: 1000 });
   const byEmail = new Map((userList?.users ?? []).map((u) => [u.email, u.id]));
 
+  /*
+    ملف الاعتمادات القائم (إن وُجد) — لتفادي إعادة تعيين كلمات مرور صالحة.
+    ⚠️ الكتابة تحدث **فور** انتهاء هذه المرحلة لا في نهاية السكربت:
+       فشل لاحق في أي مرحلة كان يُفقد كلمات المرور نهائيًا.
+  */
+  const credFile = resolve(root, '.demo-credentials/demo-users.json');
+  const existingCreds = existsSync(credFile)
+    ? new Map((JSON.parse(readFileSync(credFile, 'utf8')).users ?? []).map((u) => [u.email, u.password]))
+    : new Map();
+
   for (const u of USERS) {
     const email = `${u.key}@${DEMO_EMAIL_DOMAIN}`;
     let id = byEmail.get(email);
+
     if (!id) {
       const password = generatePassword();
       const { data, error } = await db.auth.admin.createUser({
@@ -552,10 +581,30 @@ async function run() {
       id = data.user.id;
       credentials.push({ email, password, name: u.name, role: u.role, purpose: u.purpose });
       console.log(`  ✔ أُنشئ ${email}`);
-    } else {
+    } else if (existingCreds.has(email)) {
+      credentials.push({ email, password: existingCreds.get(email), name: u.name, role: u.role, purpose: u.purpose });
       console.log(`  ↷ موجود ${email}`);
+    } else {
+      // الحساب موجود وكلمة مروره غير معروفة (تشغيل سابق فشل قبل الكتابة)
+      // ⇒ نعيّن كلمة مرور جديدة حتى تبقى البيئة قابلة للاستخدام فعلًا.
+      const password = generatePassword();
+      const { error } = await db.auth.admin.updateUserById(id, { password });
+      if (error) throw new Error(`إعادة تعيين كلمة مرور ${email}: ${error.message}`);
+      credentials.push({ email, password, name: u.name, role: u.role, purpose: u.purpose });
+      console.log(`  ↻ أُعيد تعيين كلمة مرور ${email} (كانت مفقودة)`);
     }
     userId.set(u.key, id);
+  }
+
+  // الكتابة فورًا — قبل أي مرحلة أخرى قابلة للفشل
+  if (credentials.length) {
+    mkdirSync(dirname(credFile), { recursive: true });
+    writeFileSync(
+      credFile,
+      JSON.stringify({ project: projectRef, updatedAt: new Date().toISOString(), users: credentials }, null, 2),
+      'utf8',
+    );
+    console.log(`  🔑 كُتبت اعتمادات ${credentials.length} مستخدمًا في .demo-credentials/demo-users.json`);
   }
 
   await up(
@@ -998,22 +1047,8 @@ async function run() {
     'id',
   );
 
-  /* --- كتابة الاعتمادات في مكان مُستثنى من Git --- */
-  if (credentials.length) {
-    const dir = resolve(root, '.demo-credentials');
-    mkdirSync(dir, { recursive: true });
-    const file = resolve(dir, 'demo-users.json');
-    writeFileSync(
-      file,
-      JSON.stringify({ project: projectRef, createdAt: new Date().toISOString(), users: credentials }, null, 2),
-      'utf8',
-    );
-    console.log(`\n  🔑 كلمات مرور ${credentials.length} مستخدمًا كُتبت في:`);
-    console.log(`     .demo-credentials/demo-users.json   (مجلد مُستثنى من Git)`);
-    console.log('     ⚠️ لا تُشارك هذا الملف ولا تضعه في Git.');
-  } else {
-    console.log('\n  ℹ️ لم يُنشأ مستخدم جديد — الاعتمادات السابقة ما زالت صالحة.');
-  }
+  console.log(`\n  🔑 اعتمادات ${credentials.length} مستخدمًا في .demo-credentials/demo-users.json`);
+  console.log('     (مجلد مُستثنى من Git — لا تُشاركه)');
 
   console.log('\n══════════════════════════════════════════════════════════════');
   console.log('  ✅ انتهى البذر بنجاح');
