@@ -187,11 +187,17 @@ gh repo create <repo> --private --source=. --push
 
 | الإعداد | القيمة |
 |---------|--------|
-| Framework | Next.js |
-| Root Directory | `apps/web` |
-| Install Command | `pnpm install` |
-| Build Command | `pnpm turbo run build --filter=@erp/web` |
+| Framework | Next.js (يُكتشف تلقائيًا) |
+| **Root Directory** | **`apps/web`** |
+| Install / Build Command | **اتركهما فارغين** — Vercel يكتشف Turborepo وينفّذ التثبيت في جذر المستودع |
 | Node.js | 20.x أو أحدث |
+
+⚠️ **موضع `vercel.json` مهم:** Vercel يقرأه من **Root Directory** لا من جذر المستودع.
+لذلك الملف في [`apps/web/vercel.json`](../apps/web/vercel.json). وضعه في الجذر يعني
+تجاهله بصمت.
+
+يحتوي على `HSTS` فقط؛ بقية الترويسات الأمنية مُعرَّفة في
+[`next.config.ts`](../apps/web/next.config.ts) لتبقى فعّالة محليًا أيضًا.
 
 ### متغيرات البيئة على Vercel
 
