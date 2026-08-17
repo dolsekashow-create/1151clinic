@@ -1,6 +1,7 @@
 # ARCHITECTURE — النظام المركزي لإدارة الفروع
 
-> **الحالة:** Phase 1 (Foundation) — مُنفّذة.
+> **الحالة:** Phase 1 (الأساس) و Phase 2 (الأمان والهوية) مُنفّذتان ومُختبَرتان،
+> بالإضافة إلى **أساس قاعدة البيانات لكل وحدات المراحل 3–6** (42 جدولًا + RLS).
 > **المبدأ الحاكم:** نبني *البنية* الآن، ونترك *قواعد العمل غير المعتمدة* قابلة للتهيئة (`BUSINESS_RULE_PENDING`) بدل تخمينها.
 
 ---
@@ -103,26 +104,44 @@
 │     │  │  ├─ (auth)/             مسارات عامة: تسجيل الدخول…      [Phase 2]
 │     │  │  ├─ (dashboard)/        مسارات محمية داخل الـ Shell
 │     │  │  └─ api/                Route Handlers (webhooks/exports)
+│     │  ├─ middleware.ts          تحديث الجلسة + حماية المسارات
 │     │  ├─ modules/               واجهات وطبقات كل Module
+│     │  │  ├─ auth/               session.ts (بناء AuthContext) · actions.ts
+│     │  │  ├─ audit/              كتابة سجل التدقيق مع تنقية الحقول
 │     │  │  └─ <module>/
-│     │  │     ├─ ui/              مكوّنات الواجهة الخاصة بالـ Module
-│     │  │     ├─ actions/         Server Actions (transport)
-│     │  │     └─ repositories/    Data Access (Supabase)
+│     │  │     ├─ schemas.ts       تحقق Zod
+│     │  │     ├─ repository.ts    Data Access (Supabase) — التحويل snake↔camel هنا
+│     │  │     ├─ actions.ts       Server Actions (transport)
+│     │  │     └─ ui/              مكوّنات الواجهة الخاصة بالـ Module
 │     │  ├─ infrastructure/
-│     │  │  ├─ supabase/           browser / server / admin clients
-│     │  │  ├─ notifications/      Providers                       [Phase 5]
+│     │  │  ├─ supabase/           browser / server / admin / middleware / health
+│     │  │  ├─ notifications/      Providers
 │     │  │  └─ legacy/             Integration adapters            [لاحقًا]
-│     │  ├─ shared/                أدوات مشتركة داخل التطبيق
-│     │  └─ config/                إعدادات وبيئة مُتحقق منها
+│     │  ├─ shared/
+│     │  │  ├─ lib/action.ts       غلاف Server Actions (auth→perm→validate→audit)
+│     │  │  └─ components/         الشريط الجانبي والعلوي
+│     │  └─ config/                env.ts (Zod) · navigation.ts
 │     └─ …
 ├─ packages/
 │  ├─ core/                        Domain + Use Cases (TS خالص)
+│  │  ├─ authorization/            دوال تخويل خالصة
+│  │  ├─ permissions/              كتالوج الصلاحيات والأدوار الأولية
+│  │  ├─ pending/                  سجل BUSINESS_RULE_PENDING
+│  │  ├─ events/                   Domain Events (جسر تشغيلي↔مالي)
+│  │  ├─ notifications/            تجريد المزوّدين + قوالب + إعادة محاولة
+│  │  ├─ reports/                  تعريف التقارير والفلاتر والتصدير
+│  │  ├─ storage/                  سياسة الوصول للملفات
+│  │  └─ integration/              واجهات النظام القديم (بلا تنفيذ)
 │  ├─ ui/                          Design System (مستقل عن أي Module)
 │  ├─ types/                       أنواع مشتركة + Database types مُولّدة
-│  └─ config/                      tsconfig / eslint / prettier presets
+│  └─ config/                      tsconfig presets
+├─ scripts/
+│  ├─ generate-seed.mjs            seed الصلاحيات ← كتالوج الكود
+│  └─ generate-db-types.mjs        أنواع TS ← ملفات الترحيل
 ├─ supabase/
 │  ├─ migrations/                  SQL مرقّمة — مصدر الحقيقة للـ Schema
-│  ├─ seed/                        بيانات مرجعية (roles/permissions)
+│  ├─ seed/                        بيانات مرجعية مُولّدة
+│  ├─ tests/                       منصة اختبار RLS على Postgres حقيقي
 │  └─ functions/                   Edge Functions (عند الحاجة فقط)
 ├─ docs/                           هذا التوثيق
 └─ .github/workflows/              CI
@@ -144,10 +163,10 @@
 
 | Module | المسؤولية | حالة قواعد العمل |
 |--------|-----------|-------------------|
-| `auth` | جلسات، دخول/خروج، استعادة كلمة المرور | مؤكد (تقني) |
-| `identity` | المستخدمون، الأدوار، الصلاحيات، ربط الفروع | مؤكد جزئيًا — قائمة الأدوار مبدئية |
-| `organizations` | المنشأة، الفروع، الإدارات/الأقسام | مؤكد هيكليًا |
-| `customers` | العملاء وبياناتهم الأساسية | مؤكد جزئيًا |
+| `auth` | جلسات، دخول/خروج، استعادة كلمة المرور | ✅ مُنفَّذ — طريقة الدخول النهائية `BUSINESS_DECISION_PENDING` (Q-03) |
+| `identity` | المستخدمون، الأدوار، الصلاحيات، ربط الفروع | ✅ قاعدة بيانات + RLS — قائمة الأدوار مبدئية |
+| `organizations` | المنشأة، الفروع، الإدارات/الأقسام | ✅ قاعدة بيانات + RLS |
+| `customers` | العملاء وبياناتهم الأساسية | ✅ مُنفَّذ كاملًا (المرجع التطبيقي للوحدات الأخرى) |
 | `services` | الخدمات وتوفرها بالفروع | التسعير `BUSINESS_RULE_PENDING` |
 | `appointments` | الحجوزات | الـ Workflow `BUSINESS_RULE_PENDING` |
 | `inventory` | المخازن، الأصناف، الحركات | الدورة `BUSINESS_RULE_PENDING` |
@@ -244,15 +263,19 @@ using (
 
 ## 12. خارطة الطريق (Roadmap)
 
-| Phase | المحتوى | الحالة |
-|-------|---------|--------|
-| **1 — Foundation** | Monorepo، Next.js، TS، Tailwind v4، اتصال Supabase، البيئة، الهيكل، Design System | ✅ منجزة |
-| **2 — Security** | Auth، profiles، RBAC، RLS، عزل المنشأة والفرع | ⬜ التالية |
-| **3 — Core** | Organizations، Branches، Departments، Users، Customers، Services | ⬜ |
-| **4 — Operations** | أساسات: Appointments، Inventory، Purchasing، Finance، Treasury، Shifts | ⬜ |
-| **5 — Notifications** | مركز الإشعارات، تجريد SMS، بنية المزودين | ⬜ |
-| **6 — Audit & Reports** | سجل التدقيق، بنية التقارير والتصدير | ⬜ |
-| **7 — Testing** | Unit / Integration / Permission / RLS | ⬜ |
-| **8 — Deployment** | GitHub → Vercel + Supabase، بيئات، تجهيز الإنتاج | ⬜ |
+| Phase | المحتوى | قاعدة البيانات + RLS | الخادم | الواجهة |
+|-------|---------|----------------------|--------|---------|
+| **1 — Foundation** | Monorepo، Next.js، TS، Tailwind v4، البيئة، Design System | — | ✅ | ✅ |
+| **2 — Security** | Auth، profiles، RBAC، RLS، عزل المنشأة والفرع | ✅ مُختبَرة | ✅ | ✅ دخول/خروج/استعادة + كتالوج الصلاحيات |
+| **3 — Core** | Organizations، Branches، Departments، Users، Customers، Services | ✅ | ✅ للعملاء | ✅ العملاء · ⬜ الباقي |
+| **4 — Operations** | Appointments، Inventory، Purchasing، Finance، Treasury، Shifts | ✅ | ⬜ | ⬜ |
+| **5 — Notifications** | مركز الإشعارات، تجريد SMS، بنية المزودين | ✅ | ✅ تجريد + مزوّد تطوير | ⬜ |
+| **6 — Audit & Reports** | سجل التدقيق، بنية التقارير والتصدير | ✅ | ✅ تدقيق · ✅ بنية تقارير | ⬜ |
+| **7 — Testing** | Unit / Permission / RLS | ✅ 38 اختبار RLS | ✅ 17 اختبار وحدة | ⬜ E2E |
+| **8 — Deployment** | GitHub → Vercel + Supabase | ⬜ لم تُطبَّق على المشروع | ✅ CI | ⬜ |
 
 **قاعدة الانتقال:** لا تبدأ مرحلة قبل أن تكون السابقة: تبني ✅، تعمل ✅، مُختبَرة ✅، موثّقة ✅.
+
+**لماذا سبقت قاعدة البيانات الواجهات؟** لأن نموذج الأمان (العزل والصلاحيات) يعيش في
+قاعدة البيانات لا في الواجهة. بناء الشاشات فوق أساس أمني غير مُختبَر يعني إعادة بنائها
+لاحقًا. الواجهات تُبنى وحدةً وحدة بعد اعتماد قواعد عملها.

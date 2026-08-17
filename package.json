@@ -16,12 +16,19 @@
     "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,md,json,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json,css}\"",
+    "test:rls": "node --test --test-reporter=spec supabase/tests/rls.test.mjs",
+    "test:all": "pnpm test && pnpm test:rls",
+    "db:seed:generate": "node scripts/generate-seed.mjs",
+    "db:types:generate": "node scripts/generate-db-types.mjs",
     "db:types": "supabase gen types typescript --local > packages/types/src/database.types.ts",
     "db:reset": "supabase db reset",
     "db:start": "supabase start",
-    "db:stop": "supabase stop"
+    "db:stop": "supabase stop",
+    "db:push": "supabase db push"
   },
   "devDependencies": {
+    "embedded-postgres": "18.4.0-beta.17",
+    "pg": "^8.23.0",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.8",
     "turbo": "^2.3.3",

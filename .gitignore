@@ -11,6 +11,9 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 
+# مجلد عمل مؤقت (قاعدة بيانات الاختبار، سجلات التشغيل)
+.tmp/
+
 # env & secrets  (NEVER commit real credentials)
 .env
 .env.*

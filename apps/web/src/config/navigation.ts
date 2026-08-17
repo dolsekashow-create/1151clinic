@@ -1,23 +1,26 @@
 import type { ModuleKey } from '@erp/types';
 
 /**
- * خريطة لوحة التحكم.
+ * خريطة لوحة التحكم — مصدر واحد للتنقل والعناوين ومسارات التنقّل (breadcrumbs).
  *
  * كل عنصر مرتبط بـ:
- *  • `permission` → سيُستخدم لإخفاء/إظهار العنصر بدءًا من Phase 2
- *    (إخفاء واجهة فقط — الحماية الفعلية في RLS والخادم).
+ *  • `permission` → يُخفى العنصر إن لم يملكها المستخدم.
+ *      ⚠️ إخفاء واجهة فقط. الحماية الفعلية في RLS والخادم؛ فتح الرابط يدويًا
+ *        لا يمنح أي وصول للبيانات.
  *  • `phase`      → المرحلة التي تُنفَّذ فيها الشاشة.
- *  • `href`       → يُضاف فقط عند وجود صفحة فعلية. العناصر بلا رابط معطّلة عمدًا
- *                   بدل أن تقود إلى صفحات فارغة.
+ *  • `implemented`→ هل الشاشة مبنية فعلًا؟ الشاشات غير المبنية تعرض صفحة
+ *      «قيد الإعداد» صريحة بدل واجهة وهمية توحي بوجود وظيفة.
  */
 export interface NavItem {
   readonly key: string;
   readonly label: string;
+  readonly href: string;
   readonly module: ModuleKey;
   readonly permission: string | null;
   readonly phase: 1 | 2 | 3 | 4 | 5 | 6;
-  readonly href?: string;
+  readonly implemented: boolean;
   readonly icon: NavIconKey;
+  readonly description?: string;
 }
 
 export interface NavSection {
@@ -26,7 +29,6 @@ export interface NavSection {
   readonly items: readonly NavItem[];
 }
 
-/** أسماء أيقونات lucide المستخدمة — تُربط في مكوّن الشريط الجانبي. */
 export type NavIconKey =
   | 'gauge'
   | 'building'
@@ -60,10 +62,11 @@ export const NAVIGATION: readonly NavSection[] = [
       {
         key: 'dashboard',
         label: 'لوحة المعلومات',
+        href: '/dashboard',
         module: 'organizations',
         permission: null,
         phase: 1,
-        href: '/dashboard',
+        implemented: true,
         icon: 'gauge',
       },
     ],
@@ -75,25 +78,33 @@ export const NAVIGATION: readonly NavSection[] = [
       {
         key: 'organization',
         label: 'بيانات المنشأة',
+        href: '/organization',
         module: 'organizations',
         permission: 'organizations.organization.view',
         phase: 3,
+        implemented: false,
         icon: 'building',
+        description: 'بيانات المنشأة والإعدادات العامة',
       },
       {
         key: 'branches',
         label: 'الفروع',
+        href: '/branches',
         module: 'organizations',
         permission: 'organizations.branches.view',
         phase: 3,
+        implemented: false,
         icon: 'store',
+        description: 'إدارة الفروع وبياناتها',
       },
       {
         key: 'departments',
         label: 'الأقسام والإدارات',
+        href: '/departments',
         module: 'organizations',
         permission: 'organizations.departments.view',
         phase: 3,
+        implemented: false,
         icon: 'network',
       },
     ],
@@ -105,26 +116,34 @@ export const NAVIGATION: readonly NavSection[] = [
       {
         key: 'users',
         label: 'المستخدمون',
+        href: '/users',
         module: 'identity',
         permission: 'identity.users.view',
-        phase: 2,
+        phase: 3,
+        implemented: false,
         icon: 'users',
+        description: 'المستخدمون وأدوارهم وفروعهم',
       },
       {
         key: 'roles',
-        label: 'الأدوار',
+        label: 'الأدوار والصلاحيات',
+        href: '/roles',
         module: 'identity',
         permission: 'identity.roles.view',
-        phase: 2,
+        phase: 3,
+        implemented: false,
         icon: 'shield',
       },
       {
         key: 'permissions',
-        label: 'الصلاحيات',
+        label: 'كتالوج الصلاحيات',
+        href: '/permissions',
         module: 'identity',
-        permission: 'identity.roles.manage',
+        permission: 'identity.roles.view',
         phase: 2,
+        implemented: true,
         icon: 'key',
+        description: 'مرجع الصلاحيات المتاحة في النظام',
       },
     ],
   },
@@ -135,33 +154,42 @@ export const NAVIGATION: readonly NavSection[] = [
       {
         key: 'customers',
         label: 'العملاء',
+        href: '/customers',
         module: 'customers',
         permission: 'customers.view',
         phase: 3,
+        implemented: true,
         icon: 'contact',
+        description: 'سجل العملاء',
       },
       {
         key: 'appointments',
         label: 'الحجوزات',
+        href: '/appointments',
         module: 'appointments',
         permission: 'appointments.view',
         phase: 4,
+        implemented: false,
         icon: 'calendar',
       },
       {
         key: 'staff',
         label: 'الأطباء والموظفون',
+        href: '/staff',
         module: 'identity',
         permission: 'identity.users.view',
         phase: 3,
+        implemented: false,
         icon: 'stethoscope',
       },
       {
         key: 'services',
         label: 'الخدمات',
+        href: '/services',
         module: 'services',
         permission: 'services.view',
         phase: 3,
+        implemented: false,
         icon: 'sparkles',
       },
     ],
@@ -173,33 +201,41 @@ export const NAVIGATION: readonly NavSection[] = [
       {
         key: 'inventory',
         label: 'المخزون',
+        href: '/inventory',
         module: 'inventory',
         permission: 'inventory.view',
         phase: 4,
+        implemented: false,
         icon: 'package',
       },
       {
         key: 'warehouses',
         label: 'المخازن',
+        href: '/warehouses',
         module: 'inventory',
         permission: 'inventory.warehouses.manage',
         phase: 4,
+        implemented: false,
         icon: 'warehouse',
       },
       {
         key: 'purchasing',
         label: 'المشتريات',
+        href: '/purchasing',
         module: 'purchasing',
         permission: 'purchasing.view',
         phase: 4,
+        implemented: false,
         icon: 'shoppingCart',
       },
       {
         key: 'suppliers',
         label: 'الموردون',
+        href: '/suppliers',
         module: 'purchasing',
         permission: 'purchasing.suppliers.view',
         phase: 4,
+        implemented: false,
         icon: 'truck',
       },
     ],
@@ -211,33 +247,41 @@ export const NAVIGATION: readonly NavSection[] = [
       {
         key: 'transactions',
         label: 'الحركات المالية',
+        href: '/transactions',
         module: 'finance',
         permission: 'finance.view',
         phase: 4,
+        implemented: false,
         icon: 'receipt',
       },
       {
         key: 'treasury',
         label: 'الخزائن',
+        href: '/treasury',
         module: 'finance',
         permission: 'finance.treasury.view',
         phase: 4,
+        implemented: false,
         icon: 'vault',
       },
       {
         key: 'shifts',
         label: 'الورديات',
+        href: '/shifts',
         module: 'finance',
         permission: 'finance.shifts.open',
         phase: 4,
+        implemented: false,
         icon: 'clock',
       },
       {
         key: 'expenses',
         label: 'المصروفات والإيرادات',
+        href: '/expenses',
         module: 'finance',
         permission: 'finance.view',
         phase: 4,
+        implemented: false,
         icon: 'wallet',
       },
     ],
@@ -249,35 +293,65 @@ export const NAVIGATION: readonly NavSection[] = [
       {
         key: 'notifications',
         label: 'الإشعارات',
+        href: '/notifications',
         module: 'notifications',
         permission: 'notifications.view',
         phase: 5,
+        implemented: false,
         icon: 'bell',
       },
       {
         key: 'reports',
         label: 'التقارير',
+        href: '/reports',
         module: 'reports',
         permission: 'reports.view',
         phase: 6,
+        implemented: false,
         icon: 'barChart',
       },
       {
         key: 'audit',
         label: 'سجل التدقيق',
+        href: '/audit',
         module: 'audit',
         permission: 'audit.view',
         phase: 6,
+        implemented: false,
         icon: 'history',
       },
       {
         key: 'settings',
         label: 'الإعدادات',
+        href: '/settings',
         module: 'settings',
         permission: 'settings.view',
         phase: 3,
+        implemented: false,
         icon: 'settings',
       },
     ],
   },
 ] as const;
+
+const ITEMS_BY_HREF = new Map(
+  NAVIGATION.flatMap((section) => section.items).map((item) => [item.href, item]),
+);
+
+export function findNavItem(href: string): NavItem | undefined {
+  return ITEMS_BY_HREF.get(href);
+}
+
+export function findSectionOf(href: string): NavSection | undefined {
+  return NAVIGATION.find((section) => section.items.some((item) => item.href === href));
+}
+
+/** يُرشّح القائمة حسب صلاحيات المستخدم — لتحسين التجربة لا للحماية. */
+export function visibleNavigation(permissions: readonly string[]): NavSection[] {
+  return NAVIGATION.map((section) => ({
+    ...section,
+    items: section.items.filter(
+      (item) => item.permission === null || permissions.includes(item.permission),
+    ),
+  })).filter((section) => section.items.length > 0);
+}

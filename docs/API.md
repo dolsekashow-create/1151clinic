@@ -1,6 +1,13 @@
 # API — اتفاقيات الواجهة البرمجية
 
-> **الحالة:** الاتفاقيات معتمدة في Phase 1. نقاط النهاية الفعلية تُبنى من Phase 2 فصاعدًا.
+> **الحالة:** الاتفاقيات **مُنفَّذة ومفروضة برمجيًا** عبر
+> [`defineAction` / `defineQuery`](../apps/web/src/shared/lib/action.ts).
+> كل Server Action يمر بالغلاف؛ تجاوزه يعني كتابة الفحوص يدويًا — وهو ما ترصده المراجعة.
+>
+> المرجع التطبيقي الكامل: وحدة العملاء
+> ([schemas](../apps/web/src/modules/customers/schemas.ts) ·
+> [repository](../apps/web/src/modules/customers/repository.ts) ·
+> [actions](../apps/web/src/modules/customers/actions.ts)).
 
 ---
 
@@ -22,17 +29,28 @@
 كل Server Action / Route Handler **يجب** أن يمر بهذه المراحل بهذا الترتيب:
 
 ```ts
-export async function createCustomer(input: unknown): Promise<ActionResult<Customer>> {
-  const ctx  = await requireAuth();                   // 1) 401 إن لم توجد جلسة
-  await requirePermission(ctx, 'customers.create');   // 2) 403 إن لم تتوفر الصلاحية
-  const data = createCustomerSchema.parse(input);     // 3) 422 عند فشل التحقق
-  await requireBranchAccess(ctx, data.branchId);      // 4) 403 عند تجاوز نطاق الفرع
-  const result = await customersUseCases.create(ctx, data); // 5) منطق العمل
-  await audit.record(ctx, { action: 'customer.created', ... }); // 6) تدقيق
-  revalidatePath('/customers');
-  return ok(result);
-}
+export const createCustomerAction = defineAction({
+  permission: 'customers.create',      // 1) requireAuth → 401   2) فحص صلاحية → 403
+  schema: customerCreateSchema,        // 3) تحقق Zod → 422
+  handler: async (ctx, input) => {
+    requireBranchAccess(ctx, input.branchId);   // 4) نطاق الفرع → 403
+    const customer = await createCustomer(ctx, input);  // 5) منطق العمل
+    revalidatePath('/customers');
+    return customer;
+  },
+  audit: (_ctx, input, output) => ({   // 6) سجل تدقيق (مع تنقية الحقول الحساسة)
+    action: 'customer.created',
+    module: 'customers',
+    entityType: 'customer',
+    entityId: output.id,
+    branchId: input.branchId,
+    newValues: { fullNameAr: output.fullNameAr, phone: output.phone },
+  }),
+});
 ```
+
+**قاعدة مُلزِمة:** `organizationId` **لا يُقبل من العميل إطلاقًا** — يُشتق من الجلسة
+داخل الـ repository. قبوله من الطلب يفتح باب انتحال المنشأة.
 
 > المرحلتان 2 و4 **لا تُغنيان** عن RLS — هما لإرجاع خطأ واضح وقابل للتدقيق. RLS يبقى الضامن.
 

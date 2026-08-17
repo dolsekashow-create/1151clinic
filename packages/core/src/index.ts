@@ -47,3 +47,57 @@ export {
   type DomainEvent,
   type DomainEventHandler,
 } from './events/domain-event';
+
+export {
+  DEFAULT_RETRY_POLICY,
+  nextRetryDelayMs,
+  shouldRetry,
+  type NotificationChannel,
+  type NotificationMessage,
+  type NotificationProvider,
+  type NotificationStatus,
+  type NotificationTemplate,
+  type ProviderSendResult,
+  type RetryPolicy,
+} from './notifications/types';
+export {
+  NotificationService,
+  ProviderRegistry,
+  renderTemplate,
+  type DeliveryAttempt,
+  type DeliveryOutcome,
+} from './notifications/service';
+
+export {
+  ReportRegistry,
+  toCsv,
+  type ExportFormat,
+  type ReportColumnDefinition,
+  type ReportDefinition,
+  type ReportExporter,
+  type ReportFilterDefinition,
+  type ReportFilterType,
+  type ReportQuery,
+  type ReportResult,
+} from './reports/types';
+
+export type {
+  EntityMapping,
+  ImportAdapter,
+  ImportResult,
+  IntegrationDirection,
+  LegacyRecordRef,
+  MappingStore,
+  SyncSchedule,
+} from './integration/types';
+
+export {
+  ALLOWED_MIME_TYPES,
+  MAX_FILE_SIZE_BYTES,
+  SIGNED_URL_TTL_SECONDS,
+  buildStoragePath,
+  canAccessFile,
+  requireFileAccess,
+  validateUpload,
+  type FileDescriptor,
+} from './storage/policy';

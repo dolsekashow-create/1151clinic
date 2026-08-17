@@ -15,10 +15,10 @@ import { requireSupabasePublicEnv } from '@/config/env';
  * الأولى تتحقق من التوقيع مع خادم المصادقة، والثانية تقرأ الكوكي كما هي.
  */
 export async function createClient() {
-  const { url, anonKey } = requireSupabasePublicEnv();
+  const { url, publishableKey } = requireSupabasePublicEnv();
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(url, anonKey, {
+  return createServerClient<Database>(url, publishableKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

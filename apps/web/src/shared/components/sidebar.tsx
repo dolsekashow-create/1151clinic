@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -30,7 +29,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@erp/ui';
-import { NAVIGATION, type NavIconKey } from '@/config/navigation';
+import type { NavIconKey, NavSection } from '@/config/navigation';
 
 const ICONS: Record<NavIconKey, LucideIcon> = {
   gauge: Gauge,
@@ -58,7 +57,13 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   settings: Settings,
 };
 
-export function Sidebar({ appName }: { appName: string }) {
+export interface SidebarProps {
+  appName: string;
+  sections: readonly NavSection[];
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ appName, sections, onNavigate }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -74,7 +79,7 @@ export function Sidebar({ appName }: { appName: string }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-4">
-        {NAVIGATION.map((section) => (
+        {sections.map((section) => (
           <div key={section.key} className="mb-5">
             <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wide text-sidebar-muted">
               {section.label}
@@ -82,30 +87,13 @@ export function Sidebar({ appName }: { appName: string }) {
             <ul className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = ICONS[item.icon];
-                const isActive = item.href ? pathname === item.href : false;
-
-                if (!item.href) {
-                  return (
-                    <li key={item.key}>
-                      <span
-                        className="flex cursor-not-allowed items-center gap-3 rounded-md px-2.5 py-2 text-sm text-sidebar-muted/70"
-                        title={`تُنفَّذ في المرحلة ${item.phase}`}
-                        aria-disabled="true"
-                      >
-                        <Icon className="size-4 shrink-0" aria-hidden />
-                        <span className="flex-1 truncate">{item.label}</span>
-                        <span className="rounded bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-medium text-sidebar-muted">
-                          م{item.phase}
-                        </span>
-                      </span>
-                    </li>
-                  );
-                }
+                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
                 return (
                   <li key={item.key}>
                     <Link
                       href={item.href}
+                      onClick={onNavigate}
                       aria-current={isActive ? 'page' : undefined}
                       className={cn(
                         'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm transition-colors',
@@ -116,7 +104,20 @@ export function Sidebar({ appName }: { appName: string }) {
                       )}
                     >
                       <Icon className="size-4 shrink-0" aria-hidden />
-                      <span className="truncate">{item.label}</span>
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {!item.implemented ? (
+                        <span
+                          className={cn(
+                            'rounded px-1.5 py-0.5 text-[10px] font-medium',
+                            isActive
+                              ? 'bg-primary-foreground/20 text-primary-foreground'
+                              : 'bg-sidebar-accent text-sidebar-muted',
+                          )}
+                          title={`مُخطَّطة للمرحلة ${item.phase}`}
+                        >
+                          م{item.phase}
+                        </span>
+                      ) : null}
                     </Link>
                   </li>
                 );
@@ -127,7 +128,7 @@ export function Sidebar({ appName }: { appName: string }) {
       </div>
 
       <div className="border-t border-sidebar-border px-4 py-3 text-[11px] text-sidebar-muted">
-        الإصدار 0.1.0 · المرحلة 1
+        الإصدار 0.2.0 · المرحلة 2
       </div>
     </nav>
   );

@@ -7,10 +7,10 @@ import { requireSupabasePublicEnv } from '@/config/env';
 /**
  * عميل Supabase للمتصفح.
  *
- * يستخدم مفتاح `anon` فقط — كل ما يستطيع قراءته أو كتابته محكوم بسياسات RLS.
+ * يستخدم مفتاح Publishable فقط — كل ما يستطيع قراءته أو كتابته محكوم بسياسات RLS.
  * ⚠️ لا تفترض أن إخفاء زر في الواجهة يمنع الوصول؛ الضامن هو RLS.
  */
 export function createClient() {
-  const { url, anonKey } = requireSupabasePublicEnv();
-  return createBrowserClient<Database>(url, anonKey);
+  const { url, publishableKey } = requireSupabasePublicEnv();
+  return createBrowserClient<Database>(url, publishableKey);
 }

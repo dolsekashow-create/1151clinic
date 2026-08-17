@@ -20,11 +20,14 @@ export async function GET() {
       app: {
         name: publicEnv.NEXT_PUBLIC_APP_NAME,
         environment: publicEnv.NEXT_PUBLIC_APP_ENV,
-        phase: 1,
+        phase: 2,
       },
       checks: {
         supabase: {
           status: supabase.status,
+          // معرّف المشروع عام (يظهر في العنوان أصلًا) — ليس سرًا،
+          // ووجوده هنا يختصر تشخيص «أي مشروع أنا متصل به؟»
+          projectRef: supabase.projectRef,
           latencyMs: supabase.latencyMs,
           missingEnv: supabase.missingEnv,
         },

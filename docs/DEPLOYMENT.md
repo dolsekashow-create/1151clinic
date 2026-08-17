@@ -14,26 +14,55 @@
 ## 2. التشغيل المحلي
 
 ```bash
-corepack enable
 pnpm install
-cp .env.example .env.local
+```
+
+⚠️ **موقع ملف البيئة:** Next.js يقرأ البيئة من **جذر التطبيق** لا من جذر المستودع:
+
+```bash
+cp apps/web/.env.example apps/web/.env.local
+```
+
+```bash
 pnpm dev
 ```
 
-التطبيق على http://localhost:3000
+التطبيق على http://localhost:3000 · فحص الصحة: `GET /api/health`
 
-### تشغيل Supabase محليًا (يبدأ الاحتياج له من Phase 2)
+### ملء متغيرات Supabase
+
+من لوحة Supabase ← **Project Settings**:
+
+| المتغير | المصدر |
+|---------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Data API ← Project URL (أو `https://<project-ref>.supabase.co`) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | API Keys ← **Publishable key** (`sb_publishable_…`) |
+| `SUPABASE_SECRET_KEY` | API Keys ← **Secret key** (`sb_secret_…`) — اختياري، للعمليات الإدارية فقط |
+
+تحقق من الاتصال:
+
+```bash
+curl -s http://localhost:3000/api/health
+```
+
+الحالات المحتملة: `ok` · `not_configured` (متغيرات ناقصة) · `invalid_key` (المشروع
+موجود والمفتاح مرفوض) · `unreachable` (لا استجابة).
+
+### اختبار قاعدة البيانات بلا Docker
+
+```bash
+pnpm test:rls
+```
+
+يشغّل PostgreSQL مضمّنًا ويطبّق كل الترحيلات — لا يحتاج Docker ولا Supabase CLI.
+
+### تشغيل Supabase محليًا (اختياري — يحتاج Docker)
 
 ```bash
 supabase start
 ```
 
-انسخ `API URL` و `anon key` الظاهرين في المخرجات إلى `.env.local`، ثم:
-
-```bash
-pnpm db:reset
-pnpm db:types
-```
+ثم `pnpm db:reset`.
 
 ## 3. البيئات
 
@@ -50,8 +79,8 @@ pnpm db:types
 | المتغير | Production | Preview | Development |
 |---------|-----------|---------|-------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | ✅ | ✅ | ✅ |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | ✅ | ✅ |
-| `SUPABASE_SERVICE_ROLE_KEY` | ✅ (Sensitive) | ✅ | ✅ |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ✅ | ✅ | ✅ |
+| `SUPABASE_SECRET_KEY` | ✅ (Sensitive) | ✅ (Sensitive) | اختياري |
 | `NEXT_PUBLIC_APP_URL` | ✅ | ✅ | ✅ |
 | `APP_ENV` | `production` | `staging` | `development` |
 
@@ -73,23 +102,54 @@ git push origin main      → Vercel Production → مشروع Supabase (product
 ## 6. ترحيلات قاعدة البيانات
 
 ```bash
-supabase link --project-ref <ref>
-supabase db push          # تطبيق الترحيلات على البيئة المرتبطة
+npx supabase login
+```
+
+```bash
+npx supabase link --project-ref aaqofsfgizkeiwusmckk
+```
+
+```bash
+npx supabase db push
+```
+
+ثم البذور المرجعية (الصلاحيات والأدوار) عبر SQL Editor في لوحة Supabase أو:
+
+```bash
+psql "$DATABASE_URL" -f supabase/seed/01_permissions_roles.sql
 ```
 
 **الترتيب الإلزامي:** الترحيلات تُطبَّق **قبل** نشر الكود الذي يعتمد عليها.
 **ممنوع** تعديل ملف ترحيل سبق تطبيقه — يُضاف ملف جديد.
 
+⚠️ `supabase link` يتطلب Access Token (تسجيل دخول) وكلمة مرور قاعدة البيانات.
+كلاهما بحوزة مالك المشروع فقط ولا يُوضع في المستودع.
+
+### أول مستخدم (bootstrap)
+
+لا يمكن إنشاء أول مستخدم من الواجهة لأن التسجيل الذاتي معطّل عمدًا. الخطوات:
+
+1. أنشئ المستخدم من لوحة Supabase ← Authentication ← Add user.
+2. أضف صف `organizations` وصف `branches` عبر SQL Editor.
+3. أضف صف `profiles` بنفس `id` المستخدم و`organization_id` المنشأة.
+4. أسند دور `company_admin` بنطاق `organization` في `user_roles`.
+
+بعدها يستطيع هذا المستخدم إدارة الباقي من التطبيق.
+
 ## 7. قائمة التحقق قبل الإنتاج
 
-- [ ] كل الجداول عليها RLS مُفعّلة ومختبرة
-- [ ] لا يوجد `service_role` key في أي كود عميل
-- [ ] `.env` غير موجود في Git
-- [ ] اختبارات RLS والصلاحيات تمر
+- [x] كل الجداول عليها RLS مُفعّلة (اختبار تغطية يفرضها)
+- [x] اختبارات RLS والصلاحيات تمر (38 اختبارًا)
+- [x] لا مفتاح سرّي في أي كود عميل (`server-only` + فحص CI)
+- [x] `.env` غير موجود في Git
+- [x] Security headers مفعّلة
+- [ ] الترحيلات مُطبَّقة على مشروع Supabase وتم التحقق منها هناك
+- [ ] مفتاح Publishable صالح ومُختبَر (`/api/health` يُرجع `ok`)
+- [ ] Rate limiting صريح على مسارات الدخول
+- [ ] CSP مضبوطة
 - [ ] النسخ الاحتياطي مُفعّل على مشروع Supabase
-- [ ] Security headers مفعّلة
-- [ ] مراجعة سجلات التدقيق تعمل
 - [ ] خطة استعادة موثّقة ومجرّبة
+- [ ] اختبارات E2E للمسارات الحرجة
 
 ## 8. ملاحظة على حدود Vercel
 

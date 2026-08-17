@@ -1,38 +1,50 @@
 # SECURITY — نموذج الأمان
 
 > اعتبر كل بيانات هذا النظام **Business-Sensitive**: بيانات مالية، عملاء، مخزون، وتكاليف.
+>
+> **حالة التنفيذ:** نموذج الأمان مُنفَّذ ومُختبَر على محرّك PostgreSQL حقيقي (38 اختبارًا).
+> راجع §6 لما تم اختباره فعليًا وما لم يُختبر.
 
 ---
 
 ## 1. نموذج التهديد (Threat Model)
 
-| # | التهديد | الضابط |
-|---|---------|--------|
-| T1 | موظف فرع A يقرأ بيانات فرع B | RLS في Postgres (لا يمكن تجاوزه من العميل) |
-| T2 | استدعاء PostgREST مباشرة بمفتاح `anon` متجاوزًا الواجهة | RLS — الواجهة ليست حاجزًا أمنيًا أصلًا |
-| T3 | تصعيد صلاحيات عبر تعديل الطلب (Mass assignment) | Zod validation + قوائم حقول مسموحة + سياسات `WITH CHECK` |
-| T4 | تسريب `service_role` key إلى المتصفح | حظر معماري: العميل الإداري في ملف `server-only` + فحص في CI |
-| T5 | تلاعب بالحركات المالية بعد الاعتماد | جداول append-only + منع `UPDATE/DELETE` عبر RLS و Triggers |
-| T6 | هجوم تخمين كلمات المرور | Supabase Auth + Rate limiting على مسارات الدخول |
-| T7 | تسريب أسرار في Git | `.gitignore` + `.env.example` بلا قيم + فحص أسرار في CI |
-| T8 | وصول غير مصرّح لملفات مرفقة | Buckets خاصة + Storage policies مبنية على نفس دوال `app.*` |
-| T9 | إنكار الفعل (Repudiation) | `audit_logs` append-only + `created_by/updated_by` |
+| # | التهديد | الضابط | الحالة |
+|---|---------|--------|--------|
+| T1 | موظف فرع A يقرأ بيانات فرع B | RLS في Postgres | ✅ مُختبَر |
+| T2 | استدعاء PostgREST مباشرة بمفتاح Publishable متجاوزًا الواجهة | RLS — الواجهة ليست حاجزًا أمنيًا أصلًا | ✅ مُختبَر |
+| T3 | نقل سجل إلى فرع/منشأة أخرى عبر UPDATE | `WITH CHECK` على كل سياسة تعديل | ✅ مُختبَر |
+| T4 | تسريب مفتاح Secret إلى المتصفح | `server-only` + فحص CI | ✅ حاجز عند البناء |
+| T5 | تلاعب بالحركات المالية بعد الترحيل | دفاتر append-only + محفّزات | ✅ مُختبَر |
+| T6 | تصعيد صلاحيات ذاتي (منح دور/فرع للنفس) | شروط `user_id <> auth.uid()` في السياسات | ✅ مُختبَر |
+| T7 | تفعيل حساب معطّل ذاتيًا | محفّز `guard_profile_sensitive_fields` | ✅ مُختبَر |
+| T8 | تعداد الحسابات عبر رسائل الدخول | رسالة فشل موحّدة + استجابة ثابتة لاستعادة كلمة المرور | ✅ مُنفَّذ |
+| T9 | تسريب أسرار في Git | `.gitignore` + فحص أسرار في CI | ✅ مُنفَّذ |
+| T10 | وصول غير مصرّح لملفات مرفقة | Buckets خاصة + روابط موقّعة قصيرة الأجل | ⬜ عند تفعيل الملفات |
+| T11 | إنكار الفعل (Repudiation) | `audit_logs` append-only + `created_by/updated_by` من الجلسة | ✅ مُنفَّذ |
+| T12 | تصعيد صلاحيات عبر `SECURITY DEFINER` | `SET search_path = ''` على كل دالة + اختبار شامل | ✅ مُختبَر |
+| T13 | حقن صيغ في التقارير المُصدَّرة (CSV injection) | تهريب الحقول التي تبدأ بـ `= + - @` | ✅ مُنفَّذ |
+| T14 | تخمين كلمات المرور | حدود Supabase Auth | ⚠️ حدود المنصة فقط — راجع §7 |
 
 ---
 
 ## 2. الدفاع في العمق (Defense in Depth)
 
 ```
-1. Network / Platform   → HTTPS، HSTS، Security headers
-2. Session              → Supabase Auth، كوكيز HttpOnly/Secure/SameSite
-3. Server Authorization → فحص الصلاحية قبل تنفيذ أي Use Case
-4. Input Validation     → Zod على حدود النظام (Actions / Route Handlers)
+1. Network / Platform   → HTTPS، Security headers
+2. Session              → Supabase Auth، كوكيز HttpOnly، تحديث في middleware
+3. Server Authorization → requireAuth → requirePermission → requireBranchAccess
+4. Input Validation     → Zod على كل نقطة دخول
 5. Database (RLS)       ← ★ خط الدفاع الحقيقي والأخير
-6. Audit                → تسجيل من فعل ماذا ومتى
+6. Audit                → من فعل ماذا ومتى
 ```
 
 **قاعدة حاكمة:** إذا سقطت الطبقات 1–4 بسبب خطأ برمجي، يجب أن تبقى الطبقة 5 كافية لمنع تسرب البيانات.
-الواجهة (إخفاء الأزرار) **ليست** طبقة أمان — هي تحسين تجربة فقط.
+الواجهة (إخفاء الأزرار وترشيح القوائم) **ليست** طبقة أمان — هي تحسين تجربة فقط.
+
+**تنفيذ الطبقة 3:** كل Server Action يمر عبر
+[`defineAction`](../apps/web/src/shared/lib/action.ts) الذي يفرض الترتيب.
+غرضه إرجاع خطأ **مفهوم وقابل للتدقيق** (403) بدل رفض صامت من RLS (0 صفوف).
 
 ---
 
@@ -40,116 +52,163 @@
 
 ### 3.1 الدوال المساعدة (schema `app`)
 
-تُنفَّذ في Phase 2. كلها `SECURITY DEFINER` + `STABLE` + `SET search_path = ''`:
+كلها `SECURITY DEFINER` + `STABLE` + `SET search_path = ''`:
 
 | الدالة | العائد | الوصف |
 |--------|--------|-------|
 | `app.current_user_id()` | `uuid` | `auth.uid()` مغلّفة |
-| `app.current_org_id()` | `uuid` | منشأة المستخدم الحالي من `profiles` |
-| `app.is_active_user()` | `boolean` | حالة الحساب `active` |
-| `app.has_permission(p_key text)` | `boolean` | عبر `user_roles → role_permissions → permissions` |
-| `app.can_access_branch(p_branch uuid)` | `boolean` | `true` إذا كان الدور بنطاق `organization`، أو الفرع ضمن `user_branches` |
+| `app.current_org_id()` | `uuid` | منشأة المستخدم النشط |
+| `app.is_active_user()` | `boolean` | الحساب نشط وغير محذوف |
+| `app.has_permission(text)` | `boolean` | عبر `user_roles → role_permissions → permissions` |
+| `app.has_org_scope()` | `boolean` | هل للمستخدم دور بنطاق المنشأة كلها؟ |
+| `app.can_access_branch(uuid)` | `boolean` | نطاق منشأة، أو الفرع ضمن `user_branches` |
 
-> `SET search_path = ''` إلزامي على كل `SECURITY DEFINER` — بدونه ثغرة تصعيد صلاحيات عبر مخطط مزروع.
+**لماذا `SECURITY DEFINER`؟** ليس تساهلًا — بل لمنع **التكرار اللانهائي**:
+سياسة على `user_roles` تستدعي `has_permission` التي تقرأ `user_roles`. تنفيذ الدالة
+بصلاحيات مالك يتجاوز RLS يكسر الحلقة. هذا قرار معماري مُوثَّق (AD-03) وتغييره مكلف.
 
-### 3.2 قالب السياسات لكل جدول تشغيلي
+**لماذا `SET search_path = ''` إلزامي؟** بدونه يستطيع مستخدم بصلاحية إنشاء مخطط أن
+يزرع دالة تُنتحل داخل مسار البحث، فتُنفَّذ بصلاحيات المالك ⇒ تصعيد صلاحيات كامل.
+يوجد اختبار يفشل إن نُسي على أي دالة جديدة.
+
+**ملاحظة على `FORCE ROW LEVEL SECURITY`:** لم يُفعَّل. السبب: التطبيق لا يتصل أبدًا
+بدور مالك الجداول (يتصل كـ `authenticated`)، بينما تفعيل FORCE يُخضع دوال
+`SECURITY DEFINER` نفسها للسياسات ويُعيد مشكلة التكرار. المقايضة موثّقة هنا لأنها
+تُخالف نصيحة عامة شائعة.
+
+### 3.2 مولّد السياسات
+
+بدل كتابة ~150 سياسة يدويًا، تُولَّد من قالب واحد:
+[`app.apply_rls()`](../supabase/migrations/20260817001000_identity_rbac.sql)
 
 ```sql
-alter table public.customers enable row level security;
-alter table public.customers force row level security;
+select app.apply_rls(
+  'customers',              -- الجدول
+  'customers.view',         -- SELECT
+  'customers.create',       -- INSERT   (null ⇒ ممنوع)
+  'customers.update',       -- UPDATE   (null ⇒ ممنوع)
+  'customers.delete',       -- DELETE   (null ⇒ ممنوع)
+  true,                     -- الجدول يحمل branch_id
+  false                     -- ليس دفترًا
+);
+```
 
-create policy customers_select on public.customers
-for select to authenticated
+القالب المُولَّد لكل أمر:
+
+```sql
 using (
   (select app.is_active_user())
   and organization_id = (select app.current_org_id())
   and (select app.can_access_branch(branch_id))
   and (select app.has_permission('customers.view'))
-);
-
-create policy customers_insert on public.customers
-for insert to authenticated
-with check (
-  (select app.is_active_user())
-  and organization_id = (select app.current_org_id())
-  and (select app.can_access_branch(branch_id))
-  and (select app.has_permission('customers.create'))
-);
-
-create policy customers_update on public.customers
-for update to authenticated
-using  ( … 'customers.view'   … )
-with check ( … 'customers.update' … );   -- ★ يمنع نقل الصف إلى فرع آخر
+)
 ```
 
 **نقاط حرجة:**
-- `WITH CHECK` على `UPDATE` **إلزامي** — بدونه يستطيع المستخدم تغيير `branch_id` وتهريب صف إلى فرع آخر.
-- الجداول المالية: **لا سياسة `UPDATE` ولا `DELETE` إطلاقًا** — التصحيح بحركة عكسية.
-- `FORCE ROW LEVEL SECURITY` يمنع تجاوز السياسات حتى لمالك الجدول.
+- `WITH CHECK` يُولَّد **دائمًا** مع `UPDATE`، بنفس شروط النطاق ⇒ يستحيل نقل صف إلى فرع أو منشأة أخرى.
+- `(select …)` مقصود: يجعل PostgreSQL يُقيّم الدالة مرة واحدة (InitPlan) بدل مرة لكل صف.
+- الأوامر غير المسموح بها **لا تُمنح صلاحيتها أصلًا** (`GRANT`) — دفاع ثانٍ قبل RLS.
+- الجداول الدفترية (`p_ledger = true`) لا تحصل على سياسة UPDATE/DELETE إطلاقًا.
 
-### 3.3 اختبارات RLS الإلزامية (Phase 7)
+### 3.3 السياسات المكتوبة يدويًا
 
-| السيناريو | النتيجة المتوقعة |
-|-----------|------------------|
-| مستخدم فرع A يقرأ عملاء فرع B | 0 صفوف |
-| مستخدم بلا `customers.create` ينشئ عميلًا | فشل السياسة |
-| مستخدم يحاول تغيير `branch_id` لصف يملكه | فشل `WITH CHECK` |
-| مستخدم يحاول تغيير `organization_id` | فشل `WITH CHECK` |
-| مستخدم معطّل (`status != active`) | 0 صفوف على كل الجداول |
-| محاولة `UPDATE` على حركة مالية معتمدة | مرفوضة |
-| مستخدم بنطاق `organization` يقرأ كل الفروع | ينجح |
+جداول نطاقها ليس `(organization_id + branch_id)` القياسي لها سياسات صريحة:
+`organizations`, `branches`, `profiles`, `roles`, `permissions`, `role_permissions`,
+`user_roles`, `user_branches`, `branch_services`, `stock_levels`, `audit_logs`, `notification_logs`.
 
-هذه الاختبارات تعمل **مباشرة على قاعدة البيانات** بمفتاح `anon` وجلسة مستخدم حقيقية — لا عبر واجهة التطبيق.
+قواعد إضافية مهمة فيها:
+- **`profiles`**: المستخدم يقرأ ملفه دائمًا (وإلا تعذّر بناء سياق الجلسة)، لكن محفّزًا
+  يمنعه من تغيير `status` أو `organization_id` أو `is_service_provider` بلا صلاحية.
+- **`user_roles` / `user_branches`**: `user_id <> auth.uid()` ⇒ لا أحد يمنح نفسه دورًا أو فرعًا.
+  ومنح نطاق `organization` يتطلب أن يكون المانح نفسه بنطاق منشأة.
+- **`roles`**: `is_system = false` شرط في التعديل والحذف ⇒ الأدوار النظامية محميّة.
+- **`permissions`**: قراءة فقط للجميع؛ الكتالوج يُدار من الكود عبر seed.
 
 ---
 
 ## 4. إدارة المفاتيح والأسرار
 
-| المفتاح | مكانه | يُسمح باستخدامه في |
-|---------|-------|--------------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | عام | العميل والخادم |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | عام (محمي بـ RLS) | العميل والخادم |
-| `SUPABASE_SERVICE_ROLE_KEY` | **سري** | الخادم فقط، وفي حالات محددة موثّقة |
-| مفاتيح مزودي الإشعارات | **سري** | الخادم فقط |
+| المفتاح | الصيغة | مكانه | يُسمح باستخدامه في |
+|---------|--------|-------|--------------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://<ref>.supabase.co` | عام | العميل والخادم |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_…` | عام (محمي بـ RLS) | العميل والخادم |
+| `SUPABASE_SECRET_KEY` | `sb_secret_…` | **سري** | الخادم فقط، حالات محددة موثّقة |
+| مفاتيح مزودي الإشعارات | — | **سري** | الخادم فقط |
+
+> المفتاح العام ليس سرًا بحكم التصميم: الحماية من RLS لا من إخفاء المفتاح.
+> إن كان كشف المفتاح يعني تسريب بيانات، فالخلل في السياسات لا في المفتاح.
 
 **ضوابط تقنية مُنفَّذة:**
-1. `src/infrastructure/supabase/admin.ts` يستورد `server-only` ⇒ أي محاولة استيراده من مكوّن عميل **تفشل عند البناء**.
-2. الوصول للبيئة يمر عبر `src/config/env.ts` (Zod) — الأسرار مُعرّفة في مخطط الخادم فقط.
-3. `.env*` مستثناة من Git، و`.env.example` بلا قيم حقيقية.
-4. CI يفحص التسريب قبل الدمج.
+1. [`admin.ts`](../apps/web/src/infrastructure/supabase/admin.ts) يستورد `server-only` ⇒ استيراده من مكوّن عميل **يفشل عند البناء**.
+2. الوصول للبيئة يمر حصرًا عبر [`config/env.ts`](../apps/web/src/config/env.ts) (Zod)، والأسرار في مخطط الخادم فقط.
+3. `.env*` مستثناة من Git (تشمل `apps/web/.env.local`)، و`.env.example` بلا قيم.
+4. CI يفشل إن رُفع ملف بيئة أو ظهرت إشارة مفتاح سرّي خارج المواضع المسموح بها.
+5. `SUPABASE_SECRET_KEY` **اختياري**: النظام يعمل كاملًا بدونه، وغيابه يعطّل العمليات الإدارية فقط.
 
-**متى يُسمح بـ `service_role`؟** فقط في: seeding، مهام إدارية موثّقة، Webhooks موقّعة، ومهام خلفية. وفي كل حالة يجب أن يسبقه فحص صلاحية صريح في الكود.
+**متى يُسمح بالمفتاح السري؟** seeding، إنشاء مستخدم عبر Auth Admin API بعد فحص
+`identity.users.create`، Webhooks موقّعة، ومهام خلفية. وفي كل حالة يسبقه فحص صلاحية صريح.
 
 ---
 
 ## 5. التحقق من المدخلات
 
 - كل Server Action و Route Handler يبدأ بـ **Zod schema** — لا استثناءات.
-- النمط الإلزامي في كل نقطة دخول:
-  ```
-  1) getUser()               → 401 إن لم يوجد
-  2) requirePermission(key)  → 403 إن لم تتوفر
-  3) schema.parse(input)     → 422 عند الفشل
-  4) useCase(...)            → منطق العمل
-  5) auditLog(...)           → للعمليات المؤثرة
-  ```
-- رسائل الأخطاء للمستخدم عامة؛ التفاصيل التقنية تذهب للسجلات فقط (لا تسريب بنية داخلية).
+- **`organization_id` لا يُقبل من العميل إطلاقًا** — يُشتق من الجلسة (يمنع mass assignment).
+- `created_by` / `updated_by` تُضبط من محفّز قاعدة بيانات من `auth.uid()`، لا من الطلب.
+- رسائل الأخطاء للمستخدم عامة؛ التفاصيل التقنية في سجلات الخادم فقط.
+- `NOT_FOUND` بدل `PERMISSION_DENIED` عند طلب سجل خارج النطاق ⇒ لا نكشف وجود بيانات في فروع أخرى.
 
 ---
 
-## 6. ضوابط أخرى
+## 6. ما تم اختباره فعليًا
 
-| الضابط | الحالة |
-|--------|--------|
-| Security headers (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`) | ✅ Phase 1 — `next.config.ts` |
-| `poweredByHeader: false` | ✅ Phase 1 |
-| HTTPS/HSTS | تُدار من Vercel |
-| Rate limiting على الدخول والعمليات الحساسة | ⬜ Phase 2 |
-| Storage: Buckets خاصة + سياسات | ⬜ عند تفعيل الملفات |
-| مراجعة أمنية قبل كل إصدار | إلزامية |
+**التنفيذ:** `pnpm test:rls` — يشغّل PostgreSQL حقيقيًا، يطبّق نفس ملفات الترحيل،
+ثم ينفّذ الاستعلامات بدور `authenticated` وبجلسة مستخدم حقيقية (`request.jwt.claims`).
 
-## 7. الخصوصية
+### ✅ مُختبَر (38 اختبارًا، كلها تمر)
 
-- لا نُخزّن بيانات طبية أو حساسة لم يطلبها العميل صراحة.
-- سجل التدقيق يخزّن **مراجع** لا نسخًا كاملة من البيانات الحساسة.
+| المجموعة | ما تُثبته |
+|----------|-----------|
+| عزل الفروع | مستخدم فرع A يرى صف فرعه فقط، ولا يرى صف فرع B حتى بطلب صريح بالمعرّف |
+| عزل المنشآت | مستخدم منشأة أخرى يرى 0 صفوف من بيانات المنشأة الأولى |
+| النطاق مقابل الصلاحية | مدير فرع يملك `branches.view` يرى **فرعه فقط**؛ صاحب نطاق المنشأة يرى كل الفروع |
+| الصلاحيات | بلا صلاحية إنشاء ⇒ رفض؛ بلا صلاحية عرض مالي ⇒ 0 صفوف |
+| الحساب المعطّل | يرى 0 صفوف في كل الجداول رغم امتلاكه الدور |
+| WITH CHECK | رفض الإنشاء في فرع/منشأة أخرى، ورفض نقل صف قائم إليهما |
+| تصعيد الصلاحيات | لا إسناد دور للنفس، لا منح فرع للنفس، لا تفعيل حساب معطّل ذاتيًا، لا نقل النفس لمنشأة أخرى |
+| الدفاتر | حركة المخزون تُحدّث الرصيد؛ تعديلها أو حذفها مرفوض؛ حركة الخزينة غير قابلة للتعديل؛ الحركة المالية المُرحَّلة غير قابلة للتعديل **حتى لمن يملك `finance.approve`**؛ سجل التدقيق غير قابل للتعديل أو الحذف |
+| الوصول المجهول | دور `anon` لا يقرأ بيانات ولا ينفّذ دوال الأمان |
+| تغطية المخطط | كل جداول `public` عليها RLS؛ كل جدول له سياسة؛ **كل سياسة UPDATE لها WITH CHECK**؛ كل جدول بنطاق منشأة يفلتر بالمنشأة؛ كل دالة `SECURITY DEFINER` تضبط `search_path`؛ لا سياسة تعديل على أي دفتر |
+
+> اختبارات «تغطية المخطط» هي الأهم على المدى الطويل: تفشل تلقائيًا عند إضافة
+> **أي** جدول جديد بلا حماية — لا تعتمد على انتباه المراجع.
+
+### ⬜ لم يُختبر بعد (تصريح صريح)
+
+| البند | السبب |
+|-------|-------|
+| السياسات على مشروع Supabase الحقيقي | الترحيلات **لم تُطبَّق** على المشروع بعد — يتطلب Supabase CLI + صلاحية وصول للمشروع |
+| تكامل Auth الفعلي (دخول/خروج/استعادة) | يتطلب مفتاح Publishable صالح؛ المفتاح المُزوَّد مرفوض من المشروع |
+| سياسات Supabase Storage | الملفات لم تُفعَّل بعد |
+| اختبارات أداء السياسات على أحجام كبيرة | لا بيانات إنتاج |
+| اختبار الحد من المحاولات (rate limiting) | يعتمد على حدود المنصة فقط |
+| اختبارات واجهة (E2E) | لم تُبنَ بعد — المرحلة 7 |
+
+---
+
+## 7. ثغرات معروفة ومقبولة حاليًا
+
+| البند | الحالة | الخطة |
+|-------|--------|-------|
+| Rate limiting على مسارات الدخول | حدود Supabase Auth الافتراضية فقط | حد صريح على مستوى التطبيق قبل الإنتاج |
+| MFA | غير مفعّل | معلّق على Q-04 |
+| سجل التدقيق يُكتب بجلسة المستخدم | يمكنه إنشاء سجل بحقول من اختياره (لكن `user_id = auth.uid()` مفروض، والتعديل/الحذف مستحيل) | نقل الكتابة إلى دالة قاعدة بيانات عند تشدّد متطلبات الامتثال |
+| فشل كتابة التدقيق لا يُسقط العملية | قرار متعمّد: عملية ناجحة لا تُلغى لفشل سطر تدقيق | يُراجَع إن أصبح التدقيق متطلب امتثال صارم |
+| Security headers لا تشمل CSP | CSP مع Next يتطلب nonce لكل طلب | يُضاف قبل الإنتاج |
+
+## 8. الخصوصية
+
+- لا تُخزَّن بيانات طبية أو حساسة لم يطلبها العميل صراحةً.
+- سجل التدقيق يُنقّي أي حقل يحتوي: `password`, `secret`, `token`, `api_key`, `credential`, `session`, `otp`, `pin`.
+- سجلات الإشعارات تُخفي جزءًا من رقم المستلم ولا تحتوي نص الرسالة الكامل.
 - تصدير التقارير يخضع لنفس فحص الصلاحية والفرع الذي يخضع له العرض.

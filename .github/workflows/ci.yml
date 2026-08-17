@@ -32,10 +32,23 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
 
+      # اختبارات RLS تعمل على PostgreSQL مضمّن — لا تحتاج خدمة خارجية
+      - run: pnpm test:rls
+
       - run: pnpm build
         env:
           # قيم بناء فقط — لا أسرار. الاتصال الفعلي يتم وقت التشغيل.
           NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+      # الملفات المُولّدة يجب أن تطابق مصادرها، وإلا تفرّع مصدر الحقيقة
+      - name: Verify generated files are up to date
+        run: |
+          pnpm db:seed:generate
+          if ! git diff --quiet -- supabase/seed; then
+            echo "::error::ملف البذور غير مطابق لكتالوج الصلاحيات. شغّل: pnpm db:seed:generate"
+            git --no-pager diff -- supabase/seed
+            exit 1
+          fi
 
   secrets-scan:
     name: Secret scan
@@ -52,12 +65,22 @@ jobs:
             exit 1
           fi
 
-      - name: Scan for Supabase service_role keys
+      - name: Scan for hardcoded Supabase keys
         run: |
-          if grep -rInE 'service_role|SUPABASE_SERVICE_ROLE_KEY\s*=\s*ey' \
-              --include='*.ts' --include='*.tsx' --include='*.js' --include='*.json' \
-              --exclude-dir=node_modules --exclude-dir=.git . \
-              | grep -v 'docs/' | grep -v '\.env\.example' | grep -v 'admin.ts' | grep -v 'env.ts'; then
-            echo "::error::إشارة محتملة لمفتاح service_role خارج المواضع المسموح بها."
+          # قيم مفاتيح حقيقية: sb_secret_… / sb_publishable_… / JWT قديم يبدأ بـ eyJ
+          if grep -rInE '(sb_secret_[A-Za-z0-9_-]{10,}|sb_publishable_[A-Za-z0-9_-]{10,}|eyJhbGciOi[A-Za-z0-9._-]{20,})' \
+              --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' \
+              --include='*.json' --include='*.sql' --include='*.yml' --include='*.md' \
+              --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.next . ; then
+            echo "::error::مفتاح Supabase مكتوب مباشرةً في الكود. انقله إلى متغير بيئة وأبطِل المفتاح فورًا."
+            exit 1
+          fi
+
+      - name: Scan for project URLs hardcoded outside env files
+        run: |
+          if grep -rInE 'https://[a-z0-9]{20}\.supabase\.co' \
+              --include='*.ts' --include='*.tsx' --include='*.js' \
+              --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=.next . ; then
+            echo "::error::عنوان مشروع Supabase مكتوب مباشرةً في الكود. استخدم NEXT_PUBLIC_SUPABASE_URL."
             exit 1
           fi
