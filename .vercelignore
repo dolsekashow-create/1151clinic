@@ -1,0 +1,16 @@
+# لا تُرفع إلى Vercel — تقليل حجم النشر وسطح الخطأ
+
+# بيانات التجربة والأدوات المحلية: لا دور لها في الإنتاج
+scripts/seed-demo.mjs
+scripts/verify-demo.mjs
+scripts/introspect-schema.mjs
+.demo-credentials/
+
+# منصة اختبار قاعدة البيانات (PostgreSQL مضمّن — ضخمة وغير لازمة للنشر)
+supabase/tests/
+.tmp/
+
+# التوثيق
+docs/
+*.md
+!README.md

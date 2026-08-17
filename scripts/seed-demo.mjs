@@ -238,15 +238,8 @@ const NOTIFICATION_TEMPLATES = [
   { key: 'appointment_reminder', channel: 'sms', subject: null, body: 'عميلنا {{name}}، نذكّرك بموعدك في {{branch}} يوم {{date}} الساعة {{time}}.', vars: ['name', 'branch', 'date', 'time'] },
   { key: 'appointment_confirmed', channel: 'sms', subject: null, body: 'تم تأكيد موعدك في {{branch}} يوم {{date}}. شكرًا لك.', vars: ['branch', 'date'] },
   { key: 'appointment_cancelled', channel: 'sms', subject: null, body: 'نعتذر، تم إلغاء موعدك يوم {{date}}. للحجز مرة أخرى تواصل معنا.', vars: ['date'] },
-  /*
-    ⚠️ ملاحظة على المخطط (لم تُصلَح — تحتاج قرار العميل):
-       notifications.channel        تسمح بـ in_app
-       notification_templates.channel لا تسمح بـ in_app
-    ⇒ الإشعار داخل النظام لا يستطيع امتلاك قالب. تعارض بين الجدولين.
-    الحل يتطلب ترحيلًا جديدًا يضيف 'in_app' إلى قيد القوالب — غير مُنفَّذ.
-    مؤقتًا: هذا القالب بقناة email (مسموحة) حتى يُحسم القرار.
-  */
-  { key: 'shift_closed_notice', channel: 'email', subject: 'إغلاق وردية', body: 'تم إغلاق وردية {{shift}} في {{branch}}.', vars: ['shift', 'branch'] },
+  // in_app متاحة للقوالب بعد ترحيل 20260817100000 (توحيد قائمتَي القنوات)
+  { key: 'shift_closed_notice', channel: 'in_app', subject: 'إغلاق وردية', body: 'تم إغلاق وردية {{shift}} في {{branch}}.', vars: ['shift', 'branch'] },
 ];
 
 /* ========================================================================== */

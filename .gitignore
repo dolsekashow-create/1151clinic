@@ -51,3 +51,24 @@ yarn-error.log*
 
 # اعتمادات مستخدمي التجربة — ممنوع رفعها
 .demo-credentials/
+
+# ── أسرار واعتمادات: طبقة حماية إضافية صريحة ──
+# (.env.* مُغطّاة أعلاه؛ هذه أنماط شائعة يسهل نسيانها)
+*.env
+.env.local
+.env.*.local
+secrets/
+*.secret
+*.secrets
+service-account*.json
+*credentials*.json
+!.demo-credentials/.gitkeep
+
+# مفاتيح ونسخ قواعد بيانات
+*.p12
+*.pfx
+*.jks
+*.sql.gz
+*.dump
+dump.sql
+backup*.sql
