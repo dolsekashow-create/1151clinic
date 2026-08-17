@@ -36,6 +36,8 @@ insert into public.permissions (key, module, action, name_ar, is_sensitive) valu
   ('services.providers.view', 'services', 'providers.view', 'عرض مقدّمي الخدمة', false),
   ('services.providers.manage', 'services', 'providers.manage', 'إدارة مقدّمي الخدمة', false),
   ('services.providers.publish', 'services', 'providers.publish', 'نشر/إخفاء مقدّم خدمة على الموقع العام', true),
+  ('attendance.view', 'attendance', 'view', 'عرض سجل حضور الموظفين', false),
+  ('attendance.manage', 'attendance', 'manage', 'تصحيح سجلات الحضور', true),
   ('appointments.view', 'appointments', 'view', 'عرض الحجوزات', false),
   ('appointments.create', 'appointments', 'create', 'إنشاء حجز', false),
   ('appointments.update', 'appointments', 'update', 'تعديل حجز', false),

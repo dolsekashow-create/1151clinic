@@ -517,6 +517,11 @@ describe('دوال مخطط app غير قابلة للاستدعاء من الع
       م2 = النشر · م3 = إدارة المستخدمين · م4 = الحجز الداخلي · م6 = الحجز العام.
     */
     assert.deepEqual(rows.map((r) => r.proname).sort(), [
+      // م7 — الحضور. تُستدعى بجلسة الموظف نفسه وتُعيد فحص النطاق الجغرافي
+      // والفرع داخلها؛ لا يوجد مسار آخر لكتابة سجل حضور.
+      'attendance_check_in',
+      'attendance_check_out',
+      'attendance_monthly_summary',
       'available_slots', // م4 — أوقات الموظفين، مشروطة بنطاق الفرع
       'can_access_branch',
       'can_grant_role', // م3 — منع منح ما لا تملك
@@ -524,6 +529,7 @@ describe('دوال مخطط app غير قابلة للاستدعاء من الع
       'create_public_booking', // م6
       'current_org_id',
       'current_user_id',
+      'geo_distance_meters', // م7 — رياضيات بحتة بلا أي بيانات
       'get_public_booking', // م6
       'has_org_scope',
       'has_permission',

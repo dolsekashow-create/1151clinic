@@ -16,7 +16,7 @@
     "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,md,json,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json,css}\"",
-    "test:rls": "node --test --test-reporter=spec supabase/tests/rls.test.mjs supabase/tests/users.test.mjs supabase/tests/appointments.test.mjs supabase/tests/admin.test.mjs supabase/tests/public-booking.test.mjs",
+    "test:rls": "node --test --test-reporter=spec supabase/tests/rls.test.mjs supabase/tests/users.test.mjs supabase/tests/appointments.test.mjs supabase/tests/admin.test.mjs supabase/tests/public-booking.test.mjs supabase/tests/attendance.test.mjs",
     "test:all": "pnpm test && pnpm test:rls",
     "db:seed:generate": "node scripts/generate-seed.mjs",
     "db:types:generate": "node scripts/generate-db-types.mjs",
@@ -32,7 +32,8 @@
     "demo:verify:users": "node scripts/verify-users.mjs",
     "demo:verify:appointments": "node scripts/verify-appointments.mjs",
     "demo:verify:admin": "node scripts/verify-admin.mjs",
-    "demo:verify:booking": "node scripts/verify-booking.mjs"
+    "demo:verify:booking": "node scripts/verify-booking.mjs",
+    "demo:verify:attendance": "node scripts/verify-attendance.mjs"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.112.3",

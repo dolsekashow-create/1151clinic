@@ -4,7 +4,7 @@
  * ⚠️  ملف مُولّد آليًا — لا تُعدّله يدويًا.
  *     التوليد: pnpm db:types:generate   (يشتقّ الأنواع من supabase/migrations)
  *
- * عدد الجداول: 48
+ * عدد الجداول: 49
  */
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
@@ -159,6 +159,69 @@ export type Database = {
         };
         Relationships: [];
       };
+      attendance_sessions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          branch_id: string;
+          user_id: string;
+          checked_in_at: string;
+          check_in_latitude: number;
+          check_in_longitude: number;
+          check_in_distance_meters: number;
+          checked_out_at: string | null;
+          check_out_latitude: number | null;
+          check_out_longitude: number | null;
+          check_out_distance_meters: number | null;
+          duration_minutes: number | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          branch_id: string;
+          user_id: string;
+          checked_in_at?: string;
+          check_in_latitude: number;
+          check_in_longitude: number;
+          check_in_distance_meters: number;
+          checked_out_at?: string | null;
+          check_out_latitude?: number | null;
+          check_out_longitude?: number | null;
+          check_out_distance_meters?: number | null;
+          duration_minutes?: number | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          branch_id?: string;
+          user_id?: string;
+          checked_in_at?: string;
+          check_in_latitude?: number;
+          check_in_longitude?: number;
+          check_in_distance_meters?: number;
+          checked_out_at?: string | null;
+          check_out_latitude?: number | null;
+          check_out_longitude?: number | null;
+          check_out_distance_meters?: number | null;
+          duration_minutes?: number | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
       audit_logs: {
         Row: {
           id: number;
@@ -270,6 +333,9 @@ export type Database = {
           updated_by: string | null;
           deleted_at: string | null;
           is_public: boolean;
+          latitude: number | null;
+          longitude: number | null;
+          geofence_radius_meters: number | null;
         };
         Insert: {
           id?: string;
@@ -288,6 +354,9 @@ export type Database = {
           updated_by?: string | null;
           deleted_at?: string | null;
           is_public?: boolean;
+          latitude?: number | null;
+          longitude?: number | null;
+          geofence_radius_meters?: number | null;
         };
         Update: {
           id?: string;
@@ -306,6 +375,9 @@ export type Database = {
           updated_by?: string | null;
           deleted_at?: string | null;
           is_public?: boolean;
+          latitude?: number | null;
+          longitude?: number | null;
+          geofence_radius_meters?: number | null;
         };
         Relationships: [];
       };
@@ -2274,6 +2346,28 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      attendance_check_in: {
+        Args: {
+          p_branch: string | null;
+          p_latitude: number | null;
+          p_longitude: number | null;
+        };
+        Returns: { session_id: string; distance_meters: number; checked_in_at: string }[];
+      };
+      attendance_check_out: {
+        Args: {
+          p_latitude: number | null;
+          p_longitude: number | null;
+        };
+        Returns: { session_id: string; duration_minutes: number; distance_meters: number }[];
+      };
+      attendance_monthly_summary: {
+        Args: {
+          p_month: string | null;
+          p_branch?: string | null;
+        };
+        Returns: { user_id: string; full_name_ar: string; branch_id: string; sessions_count: number; total_minutes: number; open_sessions: number }[];
+      };
       available_slots: {
         Args: {
           p_branch: string | null;

@@ -125,6 +125,7 @@ export type ModuleKey =
   | 'customers'
   | 'services'
   | 'appointments'
+  | 'attendance'
   | 'inventory'
   | 'purchasing'
   | 'finance'

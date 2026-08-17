@@ -304,6 +304,8 @@ export interface CreatedUser {
    * «نسيت كلمة المرور». **لا نعرض كلمة مرور ولا رابطًا كبديل.**
    */
   invitationSent: boolean;
+  /** true = المدير ضبط كلمة المرور بنفسه ⇒ لا رسالة تعيين. */
+  passwordSetByAdmin: boolean;
 }
 
 /**
@@ -338,13 +340,25 @@ export async function createUser(ctx: AuthContext, input: UserCreateInput): Prom
 
   const admin = createAdminClient();
 
-  // (2) حساب المصادقة. كلمة المرور عشوائية 32 بايت ولا تُعاد ولا تُسجَّل.
+  /*
+    (2) حساب المصادقة.
+
+    ⚠️ كلمة المرور: إن ضبطها المدير تُستخدم كما هي، وإلا عشوائية 32 بايت لا
+       يعرفها أحد. في الحالتين **لا تُعاد ولا تُسجَّل ولا تُخزَّن** خارج Auth.
+    ⚠️ `mustChangePassword` في البيانات الوصفية علامة للمراجعة الإدارية:
+       كلمة يضعها طرف ثالث يجب أن يغيّرها صاحبها. **فرض التغيير عند أول دخول
+       غير منفّذ** — يحتاج قرارك (هل يُمنع الدخول حتى التغيير؟).
+  */
+  const adminSetPassword = Boolean(input.initialPassword);
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email: input.email,
     ...(input.phone ? { phone: input.phone } : {}),
-    password: randomBytes(32).toString('base64url'),
+    password: adminSetPassword ? input.initialPassword : randomBytes(32).toString('base64url'),
     email_confirm: true,
-    user_metadata: { full_name_ar: input.fullNameAr },
+    user_metadata: {
+      full_name_ar: input.fullNameAr,
+      ...(adminSetPassword ? { mustChangePassword: true } : {}),
+    },
   });
 
   if (createError || !created.user) {
@@ -380,11 +394,16 @@ export async function createUser(ctx: AuthContext, input: UserCreateInput): Prom
     throw translateRpcError(rpcError);
   }
 
+  /*
+    ⚠️ لا تُرسَل رسالة تعيين حين يضبط المدير كلمة المرور: إرسالها يُبطل ما
+       ضبطه ويُربك الموظف الذي أُعطي كلمة مرور تعمل بالفعل.
+  */
   return {
     id: userId as UUID,
     fullNameAr: input.fullNameAr,
     email: input.email,
-    invitationSent: await sendPasswordSetupEmail(input.email),
+    invitationSent: adminSetPassword ? false : await sendPasswordSetupEmail(input.email),
+    passwordSetByAdmin: adminSetPassword,
   };
 }
 

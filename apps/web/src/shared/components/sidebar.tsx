@@ -27,6 +27,7 @@ import {
   Wallet,
   Warehouse,
   type LucideIcon,
+  MapPin,
 } from 'lucide-react';
 import { cn } from '@erp/ui';
 import type { NavIconKey, NavSection } from '@/config/navigation';
@@ -54,6 +55,7 @@ const ICONS: Record<NavIconKey, LucideIcon> = {
   bell: Bell,
   barChart: BarChart3,
   history: History,
+  mapPin: MapPin,
   settings: Settings,
 };
 

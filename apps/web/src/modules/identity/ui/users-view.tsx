@@ -66,9 +66,10 @@ export function UsersView({
 }) {
   return (
     <>
-      <Alert variant="info" title="لا كلمات مرور في لوحة الإدارة">
-        عند إنشاء المستخدم تُرسَل إليه رسالة لتعيين كلمة مروره بنفسه. اللوحة لا تُظهر كلمة مرور
-        ولا رابط استعادة لأي حساب، ولا يمكن استرجاعها لاحقًا.
+      <Alert variant="info" title="كلمات المرور لا تُعرض أبدًا">
+        يمكنك ضبط كلمة مرور أولية عند الإنشاء، أو تركها فارغة فتُرسَل رسالة يضبطها الموظف بنفسه
+        (الأسلم). في الحالتين لا تُخزَّن كلمة المرور ولا تُعرض ولا يمكن استرجاعها لاحقًا — من
+        نسيها يستخدم «نسيت كلمة المرور».
       </Alert>
 
       <AdminResourceTable<UserRow>
@@ -180,6 +181,7 @@ function CreateUserDrawer({
       const result = await createUserAction({
         fullNameAr: String(fd.get('fullNameAr') ?? ''),
         email: String(fd.get('email') ?? ''),
+        initialPassword: String(fd.get('initialPassword') ?? ''),
         phone: String(fd.get('phone') ?? ''),
         jobTitle: String(fd.get('jobTitle') ?? ''),
         employeeCode: String(fd.get('employeeCode') ?? ''),
@@ -198,9 +200,11 @@ function CreateUserDrawer({
       }
 
       toast.success(
-        result.data.invitationSent
-          ? 'تم إنشاء المستخدم وإرسال رسالة تعيين كلمة المرور'
-          : 'تم إنشاء المستخدم — تعذّر إرسال البريد، فليستخدم «نسيت كلمة المرور»',
+        result.data.passwordSetByAdmin
+          ? 'تم إنشاء المستخدم بكلمة المرور التي حددتها — سلّمها له وبلّغه بتغييرها'
+          : result.data.invitationSent
+            ? 'تم إنشاء المستخدم وإرسال رسالة تعيين كلمة المرور'
+            : 'تم إنشاء المستخدم — تعذّر إرسال البريد، فليستخدم «نسيت كلمة المرور»',
       );
       setOpen(false);
       setSelectedBranches([]);
@@ -249,6 +253,23 @@ function CreateUserDrawer({
             hint="معرّف الدخول — تُرسل إليه رسالة تعيين كلمة المرور"
           >
             <Input id="email" name="email" type="email" dir="ltr" className="text-start" required disabled={pending} />
+          </Field>
+
+          <Field
+            label="كلمة المرور الأولية"
+            htmlFor="initialPassword"
+            error={fieldErrors.initialPassword?.[0]}
+            hint="اتركها فارغة ليضبطها الموظف بنفسه عبر رسالة (الأسلم). 10 محارف على الأقل تحوي حروفًا وأرقامًا."
+          >
+            <Input
+              id="initialPassword"
+              name="initialPassword"
+              type="password"
+              dir="ltr"
+              className="text-start"
+              autoComplete="new-password"
+              disabled={pending}
+            />
           </Field>
 
           <Field label="رقم الهاتف" htmlFor="phone" error={fieldErrors.phone?.[0]}>

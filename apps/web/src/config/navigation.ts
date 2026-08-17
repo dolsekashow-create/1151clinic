@@ -52,6 +52,7 @@ export type NavIconKey =
   | 'bell'
   | 'barChart'
   | 'history'
+  | 'mapPin'
   | 'settings';
 
 export const NAVIGATION: readonly NavSection[] = [
@@ -133,6 +134,19 @@ export const NAVIGATION: readonly NavSection[] = [
         phase: 3,
         implemented: true,
         icon: 'shield',
+      },
+      {
+        key: 'attendance',
+        label: 'الحضور والانصراف',
+        href: '/app/attendance',
+        module: 'attendance',
+        // ⚠️ بلا صلاحية: تسجيل حضور الذات حق كل موظف. من لا يملك attendance.view
+        //    يرى ساعته وسجله الشخصي فقط — والإخفاء في قاعدة البيانات لا هنا.
+        permission: null,
+        phase: 5,
+        implemented: true,
+        icon: 'mapPin',
+        description: 'تسجيل الحضور بالموقع وسجل الساعات',
       },
       {
         key: 'permissions',
