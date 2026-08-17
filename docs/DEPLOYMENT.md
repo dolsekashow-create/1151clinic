@@ -156,6 +156,64 @@ supabase start
 
 > علّم كل الأسرار كـ **Sensitive** في Vercel حتى لا تُقرأ بعد الحفظ.
 
+## 4.1 جاهزية GitHub و Vercel — حالة 2026-08-17
+
+| البند | الحالة |
+|-------|--------|
+| البناء | ✅ `pnpm build` ينجح · 9 مسارات + Middleware 107kB |
+| الفرع | `main` · 6 التزامات · **لا push** (بانتظار إذن) |
+| GitHub remote | ❌ **غير مُهيّأ** — لا يمكن الدفع |
+| `gh` CLI | ❌ غير مثبت |
+| Vercel CLI | ❌ غير مثبت |
+| أسرار متتبَّعة في Git | ✅ **صفر** — مؤكَّد بفحص كل الملفات المتتبَّعة |
+
+### الخطوة المطلوبة منك — إنشاء المستودع
+
+```bash
+git remote add origin https://github.com/<user>/<repo>.git
+```
+
+```bash
+git push -u origin main
+```
+
+أو عبر `gh` بعد تثبيته وتسجيل الدخول:
+
+```bash
+gh repo create <repo> --private --source=. --push
+```
+
+### إعدادات Vercel
+
+| الإعداد | القيمة |
+|---------|--------|
+| Framework | Next.js |
+| Root Directory | `apps/web` |
+| Install Command | `pnpm install` |
+| Build Command | `pnpm turbo run build --filter=@erp/web` |
+| Node.js | 20.x أو أحدث |
+
+### متغيرات البيئة على Vercel
+
+| المتغير | القيمة | النطاق | حساسية |
+|---------|--------|--------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://axtezcgdkdkdyflbdndv.supabase.co` | Preview + Development | — |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | مفتاح Publishable | Preview + Development | — |
+| `NEXT_PUBLIC_APP_URL` | عنوان النشر | كل النطاقات | — |
+| `NEXT_PUBLIC_APP_NAME` | اسم النظام | كل النطاقات | — |
+| `APP_ENV` | `staging` | Preview | — |
+| `SUPABASE_SECRET_KEY` | مفتاح Secret | **Server فقط** | ✅ **Sensitive** |
+
+### ⛔ قواعد إلزامية للمفتاح السري على Vercel
+
+1. **ممنوع** أن يُسمّى `NEXT_PUBLIC_*` — أي متغيّر بهذه البادئة يُدمج نصيًا في حزمة المتصفح ويصبح مقروءًا لأي زائر.
+2. يُعلَّم **Sensitive** في Vercel ⇒ لا يُقرأ بعد الحفظ.
+3. يُقرأ في الكود من [`admin.ts`](../apps/web/src/infrastructure/supabase/admin.ts) الذي يستورد `server-only` ⇒ أي استيراد من مكوّن عميل **يفشل عند البناء**.
+4. النظام يعمل كاملًا بدونه؛ غيابه يعطّل العمليات الإدارية فقط.
+
+> ⚠️ **لا تربط بيئة التطوير الحالية بنطاق Production.** لا يوجد مشروع Supabase
+> إنتاجي بعد، وبيانات هذه البيئة تجريبية بالكامل (منشأة `DEMO` وبريد `@demo.local`).
+
 ## 5. النشر
 
 ```
