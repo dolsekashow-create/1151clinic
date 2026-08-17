@@ -92,6 +92,17 @@ export type {
 } from './integration/types';
 
 export {
+  InMemoryRateLimiter,
+  NoopRateLimiter,
+  RATE_LIMITS,
+  assertWithinLimit,
+  type RateLimitKind,
+  type RateLimitResult,
+  type RateLimitRule,
+  type RateLimiter,
+} from './rate-limit/types';
+
+export {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE_BYTES,
   SIGNED_URL_TTL_SECONDS,
