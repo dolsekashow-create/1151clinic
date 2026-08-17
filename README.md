@@ -130,3 +130,4 @@ pnpm dev
 | [API.md](docs/API.md) | اتفاقيات الـ API وأكواد الأخطاء |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | البيئات والنشر وقائمة التحقق قبل الإنتاج |
 | [REQUIREMENTS.md](docs/REQUIREMENTS.md) | المؤكد · المعلّق · الأسئلة · القرارات الهندسية · الافتراضات |
+| [DATABASE_REVIEW.md](docs/DATABASE_REVIEW.md) | **مراجعة ما قبل أول ترحيل**: 45 جدولًا، العلاقات، 126 سياسة، النتائج الأمنية المصنّفة، الأداء، سلامة الترحيلات |

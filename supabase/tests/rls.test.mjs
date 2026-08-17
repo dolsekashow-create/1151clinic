@@ -394,6 +394,138 @@ describe('الوصول المجهول (anon)', () => {
 });
 
 /* ========================================================================== */
+/*  6.5) دوال مخطط app — انحدار لثغرة CRITICAL-01                             */
+/*       مستخدم مُصادَق كان يستطيع استدعاء app.apply_rls وإعادة كتابة السياسات */
+/* ========================================================================== */
+
+describe('دوال مخطط app غير قابلة للاستدعاء من العميل', () => {
+  it('المستخدم لا يستطيع استدعاء app.apply_rls (إعادة كتابة السياسات)', async () => {
+    const error = await expectDenied(
+      client,
+      IDS.userOrgAdmin,
+      `select app.apply_rls('customers','customers.view','customers.view','customers.view','customers.view', false, false, false)`,
+    );
+    assert.ok(error, 'مستخدم عادي أعاد كتابة سياسات RLS ⇒ سقوط عزل الفروع');
+    assert.match(error, /permission denied|does not exist/i);
+  });
+
+  it('المستخدم لا يستطيع استدعاء app.apply_audit_triggers (إسقاط التدقيق)', async () => {
+    const error = await expectDenied(
+      client,
+      IDS.userOrgAdmin,
+      `select app.apply_audit_triggers('customers')`,
+    );
+    assert.ok(error, 'مستخدم عادي أسقط محفّزات التدقيق');
+  });
+
+  it('المستخدم لا يستطيع استدعاء app.recalculate_stock_levels', async () => {
+    const error = await expectDenied(
+      client,
+      IDS.userA1,
+      'select app.recalculate_stock_levels($1)',
+      [IDS.orgA],
+    );
+    assert.ok(error, 'مستخدم عادي أعاد حساب أرصدة المخزون');
+  });
+
+  it('لا توجد أي دالة في مخطط app ممنوحة لـ PUBLIC', async () => {
+    const { rows } = await client.query(`
+      select p.proname, pg_get_function_identity_arguments(p.oid) as args
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'app'
+        and has_function_privilege('public', p.oid, 'execute')
+      order by p.proname
+    `);
+    assert.deepEqual(
+      rows.map((r) => `${r.proname}(${r.args})`),
+      [],
+      'دوال app ممنوحة لـ PUBLIC ⇒ سطح هجوم مفتوح',
+    );
+  });
+
+  it('دور authenticated لا يملك سوى دوال القراءة الست', async () => {
+    const { rows } = await client.query(`
+      select p.proname
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'app'
+        and has_function_privilege('authenticated', p.oid, 'execute')
+      order by p.proname
+    `);
+    assert.deepEqual(rows.map((r) => r.proname).sort(), [
+      'can_access_branch',
+      'current_org_id',
+      'current_user_id',
+      'has_org_scope',
+      'has_permission',
+      'is_active_user',
+    ]);
+  });
+});
+
+/* ========================================================================== */
+/*  6.6) السجلات المشتركة على مستوى المنشأة — انحدار لـ HIGH-01               */
+/* ========================================================================== */
+
+describe('السجلات المشتركة (branch_id = null)', () => {
+  it('موظف الفرع يقرأ الخدمات المشتركة على مستوى المنشأة', async () => {
+    await client.query(
+      `insert into public.services (organization_id, branch_id, code, name_ar)
+       values ($1, null, 'SVC-SHARED', 'خدمة مشتركة')`,
+      [IDS.orgA],
+    );
+
+    const { rows } = await asUser(client, IDS.userA1, 'select code from public.services');
+    assert.ok(
+      rows.some((r) => r.code === 'SVC-SHARED'),
+      'كتالوج الخدمات المشترك غير مرئي لموظف الفرع',
+    );
+  });
+
+  it('موظف الفرع لا يستطيع إنشاء سجل مشترك على مستوى المنشأة', async () => {
+    const error = await expectDenied(
+      client,
+      IDS.userA1,
+      `insert into public.services (organization_id, branch_id, code, name_ar)
+       values ($1, null, 'SVC-ESCALATE', 'محاولة إنشاء سجل مشترك')`,
+      [IDS.orgA],
+    );
+    assert.ok(error, 'موظف فرع أنشأ سجلًا على مستوى المنشأة');
+  });
+
+  it('السجل المشترك لا يعبر حدود المنشأة', async () => {
+    const { rows } = await asUser(client, IDS.userOrgB, 'select code from public.services');
+    assert.equal(rows.length, 0, 'سجل مشترك تسرّب إلى منشأة أخرى');
+  });
+});
+
+/* ========================================================================== */
+/*  6.7) تطابق نطاق الأب والابن — انحدار لـ HIGH-02                           */
+/* ========================================================================== */
+
+describe('تطابق الفرع بين المستند وبنوده', () => {
+  it('لا يمكن إلحاق بند قيد بحركة مالية في فرع آخر', async () => {
+    const parent = await client.query(
+      `insert into public.financial_transactions
+         (organization_id, branch_id, transaction_type, amount)
+       values ($1, $2, 'revenue', 100) returning id`,
+      [IDS.orgA, IDS.branchA2],
+    );
+
+    const error = await expectDenied(
+      client,
+      IDS.userA1,
+      `insert into public.financial_entries
+         (organization_id, branch_id, transaction_id, direction, amount)
+       values ($1, $2, $3, 'debit', 100)`,
+      [IDS.orgA, IDS.branchA1, parent.rows[0].id],
+    );
+    assert.ok(error, 'بند قيد أُلحق بحركة في فرع آخر');
+  });
+});
+
+/* ========================================================================== */
 /*  7) اختبارات شاملة على المخطط — تمنع نسيان جدول جديد بلا حماية              */
 /* ========================================================================== */
 

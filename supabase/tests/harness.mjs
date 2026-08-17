@@ -41,12 +41,16 @@ const SUPABASE_BOOTSTRAP = `
   );
 
   -- نفس تعريف Supabase: يقرأ sub من مطالبات الـ JWT في إعداد الجلسة
+  --
+  -- ⚠️ nullif تُطبَّق على النص **قبل** التحويل إلى json عمدًا: بعد انتهاء معاملة
+  --    استُخدم فيها set_config(..., is_local => true) يعود المتغيّر إلى سلسلة
+  --    فارغة لا إلى NULL، و ''::json يرمي خطأ 22P02. هذا هو تعريف Supabase الفعلي.
   create or replace function auth.uid()
   returns uuid
   language sql
   stable
   as $$
-    select nullif(current_setting('request.jwt.claims', true)::json->>'sub', '')::uuid;
+    select nullif(nullif(current_setting('request.jwt.claims', true), '')::json->>'sub', '')::uuid;
   $$;
 
   create or replace function auth.role()
@@ -54,7 +58,7 @@ const SUPABASE_BOOTSTRAP = `
   language sql
   stable
   as $$
-    select nullif(current_setting('request.jwt.claims', true)::json->>'role', '')::text;
+    select nullif(nullif(current_setting('request.jwt.claims', true), '')::json->>'role', '');
   $$;
 
   grant usage on schema auth to anon, authenticated, service_role;
