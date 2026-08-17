@@ -22,7 +22,13 @@ import EmbeddedPostgres from 'embedded-postgres';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '../..');
-const dataDir = join(repoRoot, '.tmp', 'pgdata-rls');
+/**
+ * مجلد بيانات لكل منفذ.
+ *
+ * ⚠️ مجلد واحد مشترك يُفشل تشغيل ملفَي اختبار معًا: `node --test` ينفّذهما في
+ *    عمليتين متوازيتين، فيحذف الثاني مجلد الأول أو يجد المجلد غير فارغ.
+ */
+const dataDirFor = (port) => join(repoRoot, '.tmp', `pgdata-${port}`);
 
 /** تعريفات Supabase التي تعتمد عليها الترحيلات ولا تُنشئها هي. */
 const SUPABASE_BOOTSTRAP = `
@@ -85,6 +91,7 @@ function seedFiles() {
  * يُنشئ قاعدة بيانات نظيفة، يطبّق الترحيلات والبذور، ويعيد عميلًا متصلًا.
  */
 export async function createTestDatabase({ port = 54329 } = {}) {
+  const dataDir = dataDirFor(port);
   try {
     rmSync(dataDir, { recursive: true, force: true });
   } catch {
@@ -135,6 +142,16 @@ export async function createTestDatabase({ port = 54329 } = {}) {
   return {
     client,
     applied,
+    /**
+     * اتصال إضافي مستقل — لازم لاختبار التزامن الحقيقي.
+     * معاملتان على **نفس** الاتصال تتسلسلان، فلا تُثبتان شيئًا عن السباق؛
+     * الاتصالان المنفصلان يعيدان إنتاج طلبَي HTTP متزامنين.
+     */
+    async newClient() {
+      const extra = pg.getPgClient();
+      await extra.connect();
+      return extra;
+    },
     async close() {
       await client.end();
       await pg.stop();

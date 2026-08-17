@@ -40,7 +40,7 @@ export const createCustomerAction = defineAction({
     // فحص نطاق الفرع قبل الوصول لقاعدة البيانات: يعطي 403 مفهومًا بدل رفض RLS صامت
     requireBranchAccess(ctx, input.branchId);
     const customer = await createCustomer(ctx, input);
-    revalidatePath('/customers');
+    revalidatePath('/app/customers');
     return customer;
   },
   audit: (_ctx, input, output) => ({
@@ -58,7 +58,7 @@ export const updateCustomerAction = defineAction({
   schema: customerUpdateSchema,
   handler: async (ctx, input) => {
     const customer = await updateCustomer(ctx, input);
-    revalidatePath('/customers');
+    revalidatePath('/app/customers');
     return customer;
   },
   audit: (_ctx, input, output) => ({
@@ -76,7 +76,7 @@ export const deleteCustomerAction = defineAction({
   schema: z.object({ id: z.string().uuid() }),
   handler: async (ctx, input) => {
     await softDeleteCustomer(ctx, input.id);
-    revalidatePath('/customers');
+    revalidatePath('/app/customers');
     return { id: input.id };
   },
   audit: (_ctx, input) => ({

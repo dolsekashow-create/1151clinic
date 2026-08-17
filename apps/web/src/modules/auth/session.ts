@@ -85,9 +85,25 @@ async function loadPermissions(
   return [...new Set((permissions ?? []).map((row) => row.key))];
 }
 
-/** يرمي UNAUTHENTICATED إذا لم توجد جلسة صالحة. */
+/**
+ * يرمي UNAUTHENTICATED إذا لم توجد جلسة صالحة أو كان الحساب موقوفًا.
+ *
+ * ⚠️ رفض الموقوف هنا ضروري ولا يكفي عنه RLS: قاعدة البيانات تُلغي كل صلاحياته
+ *    فعلًا، لكن الجلسة تبقى صالحة فيدخل الموقوف إلى `/app` ويرى واجهة فارغة
+ *    بلا تفسير. الرفض المبكر يُخرجه إلى صفحة الدخول برسالة مفهومة.
+ *
+ * الطبقة الثالثة هي حظر GoTrue عند الإيقاف (setUserStatus) الذي يمنع تجديد
+ * الرمز من الأساس. الثلاث معًا هي «منع الدخول» الفعلي.
+ */
 export async function requireAuth(): Promise<AuthContext> {
   const context = await getAuthContext();
   if (!context) throw errors.unauthenticated();
+  if (context.status !== 'active') throw errors.accountSuspended();
   return context;
+}
+
+/** هل الحساب موقوف؟ للاستخدام في الطبقات التي تحتاج تمييز السبب. */
+export async function getSuspendedContext(): Promise<AuthContext | null> {
+  const context = await getAuthContext();
+  return context && context.status !== 'active' ? context : null;
 }

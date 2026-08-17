@@ -10,11 +10,11 @@ export const metadata: Metadata = { title: 'تسجيل الدخول' };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; reason?: string }>;
 }) {
   const params = await searchParams;
   // ⚠️ نقبل مسارات داخلية فقط: قبول عنوان كامل يفتح ثغرة إعادة توجيه مفتوحة
-  const next = params.next?.startsWith('/') && !params.next.startsWith('//') ? params.next : '/dashboard';
+  const next = params.next?.startsWith('/') && !params.next.startsWith('//') ? params.next : '/app';
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-muted/40 p-4">
@@ -28,6 +28,12 @@ export default async function LoginPage({
             <p className="text-sm text-muted-foreground">سجّل الدخول للمتابعة</p>
           </div>
         </div>
+
+        {params.reason === 'suspended' ? (
+          <Alert variant="danger" title="الحساب موقوف">
+            أوقفت الإدارة هذا الحساب. راجع مسؤول النظام في منشأتك.
+          </Alert>
+        ) : null}
 
         {!isSupabaseConfigured ? (
           <Alert variant="warning" title="النظام غير مُهيّأ">

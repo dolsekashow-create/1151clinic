@@ -9,7 +9,7 @@ export default function NotFound() {
         description="الرابط الذي فتحته غير صحيح أو أن الصفحة لم تُنفَّذ بعد."
         action={
           <Button asChild variant="outline">
-            <Link href="/dashboard">العودة إلى لوحة المعلومات</Link>
+            <Link href="/app">العودة إلى لوحة المعلومات</Link>
           </Button>
         }
       />

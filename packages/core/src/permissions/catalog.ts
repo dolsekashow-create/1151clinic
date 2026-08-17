@@ -46,6 +46,9 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     ['branches.view', 'عرض الفروع'],
     ['branches.create', 'إضافة فرع'],
     ['branches.update', 'تعديل فرع'],
+    // النشر منفصل عن التعديل عمدًا: تعديل فرع داخليًا ≠ إظهاره للعالم
+    ['branches.publish', 'نشر/إخفاء فرع على الموقع العام', true],
+    ['organization.publish', 'نشر/إخفاء المنشأة على الموقع العام', true],
     ['departments.view', 'عرض الأقسام'],
     ['departments.manage', 'إدارة الأقسام'],
   ]),
@@ -61,9 +64,11 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     ['view', 'عرض الخدمات'],
     ['create', 'إضافة خدمة'],
     ['update', 'تعديل خدمة'],
+    ['publish', 'نشر/إخفاء خدمة على الموقع العام', true],
     // مقدّمو الخدمة (الأطباء) كيان تشغيلي مستقل عن حسابات المستخدمين — RQ-02
     ['providers.view', 'عرض مقدّمي الخدمة'],
     ['providers.manage', 'إدارة مقدّمي الخدمة'],
+    ['providers.publish', 'نشر/إخفاء مقدّم خدمة على الموقع العام', true],
   ]),
 
   ...define('appointments', [

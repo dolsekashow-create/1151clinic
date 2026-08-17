@@ -310,7 +310,9 @@ record(3, 'service_providers', PROVIDERS.length, `${PROVIDERS.filter((p) => !p.l
 record(3, 'provider_branches', providerBranchLinks, 'طبيب واحد يعمل في 3 فروع');
 record(3, 'services', SERVICES.length, `${SERVICES.filter((s) => s.shared).length} مشتركة على مستوى المنشأة`);
 record(3, 'branch_services', branchServiceLinks);
-record(3, 'appointment_statuses', APPOINTMENT_STATUSES.length, '⚠️ ليست اعتمادًا لـP-11');
+record(3, 'provider_services', 'متغيّر', 'الخدمات التي يقدّمها كل طبيب — الغياب = غير متوفّر');
+record(3, 'business_hours', OPERATIONAL_BRANCHES.length * 7, '⚠️ بيانات تجريبية · الجمعة مغلق');
+record(3, 'appointment_statuses', APPOINTMENT_STATUSES.length, 'معتمدة 2026-08-17 · تُزرع بمحفّز');
 record(3, 'units + item_categories', UNITS.length + ITEM_CATEGORIES.length, 'مشتركة');
 record(3, 'items', ITEMS.length, 'مشتركة على مستوى المنشأة');
 record(3, 'warehouses', warehouseCount, 'مخزن لكل فرع تشغيلي');
@@ -473,6 +475,28 @@ async function run() {
       .upsert(rows, { onConflict, ignoreDuplicates: insertOnly });
     if (error) throw new Error(`${table}: ${error.message}`);
     console.log(`  ✔ ${table.padEnd(26)} ${rows.length}${insertOnly ? '  (دفتر: إدراج فقط)' : ''}`);
+  };
+
+  /**
+   * استبدال صفوف يملكها هذا السكربت وحده.
+   *
+   * ⚠️ لماذا لا يكفي upsert هنا: جدول الحجوزات عليه **قيد استبعاد** يمنع تداخل
+   *    مواعيد المقدّم. عند تحديث دفعة في طلب واحد، تبقى الصفوف التي لم يصلها
+   *    الدور بعد حاملةً قيمها القديمة، فينشأ تعارض عابر يُفشل الطلب كله رغم أن
+   *    الحالة النهائية سليمة.
+   *
+   * ⚠️ الحذف مقصور على **المعرّفات التي سنكتبها الآن** — وهي معرّفات حتمية
+   *    مشتقة من UUID v5 يملكها هذا السكربت. لا يُحذف أي صف أنشأه مستخدم.
+   */
+  const replaceOwnRows = async (table, rows) => {
+    if (rows.length === 0) return;
+    const ids = rows.map((r) => r.id);
+    const { error: deleteError } = await db.from(table).delete().in('id', ids);
+    if (deleteError) throw new Error(`${table} (حذف صفوف البذرة): ${deleteError.message}`);
+
+    const { error } = await db.from(table).insert(rows);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    console.log(`  ✔ ${table.padEnd(26)} ${rows.length}  (استبدال صفوف البذرة)`);
   };
 
   console.log('\n▶ المرحلة 0 — البيانات المرجعية');
@@ -676,10 +700,76 @@ async function run() {
     ),
     'branch_id,service_id',
   );
+  /*
+    الخدمات التي يقدّمها كل مقدّم خدمة (المرحلة 4).
+    ⚠️ الربط صريح لأن الغياب يعني «غير متوفّر»: مقدّم بلا ربط لا يظهر لأي
+       خدمة في نموذج الحجز، ومحفّز التحقق يرفض حجزه.
+    التوزيع هنا تجريبي بحت ولا يمثّل قاعدة عمل: كل مقدّم يقدّم كل خدمة مشتركة
+    وخدمات فروعه.
+  */
+  await up(
+    'provider_services',
+    PROVIDERS.flatMap((p) => {
+      const worksAt = p.worksAt ?? (p.branch ? [p.branch] : []);
+      return SERVICES.filter(
+        (s) => s.shared || (s.branches ?? []).some((bc) => worksAt.includes(bc)),
+      ).map((s) => ({
+        provider_id: did('provider', p.code),
+        service_id: did('service', s.code),
+        is_available: true,
+      }));
+    }),
+    'provider_id,service_id',
+  );
+
+  /*
+    ساعات العمل (المرحلة 4).
+    ⚠️ الأحد–الخميس 08:00–20:00 والسبت 10:00–18:00 والجمعة مغلق.
+       هذه **بيانات تجريبية** لتشغيل الحجز، وليست اعتمادًا لأي دوام رسمي —
+       ساعات العمل الحقيقية تُضبط من لوحة الإدارة لكل فرع.
+    فرع بلا ساعات = مغلق تمامًا، فبدون هذه البذرة لا يمكن الحجز أصلًا.
+  */
+  await up(
+    'business_hours',
+    OPERATIONAL_BRANCHES.flatMap((bc) => [
+      ...[0, 1, 2, 3, 4].map((weekday) => ({
+        organization_id: ORG_ID,
+        branch_id: branchId(bc),
+        weekday,
+        opens_at: '08:00',
+        closes_at: '20:00',
+        is_closed: false,
+      })),
+      {
+        organization_id: ORG_ID,
+        branch_id: branchId(bc),
+        weekday: 5, // الجمعة
+        opens_at: '00:00',
+        closes_at: '00:00',
+        is_closed: true,
+      },
+      {
+        organization_id: ORG_ID,
+        branch_id: branchId(bc),
+        weekday: 6, // السبت
+        opens_at: '10:00',
+        closes_at: '18:00',
+        is_closed: false,
+      },
+    ]),
+    'branch_id,weekday,opens_at,closes_at',
+  );
+
+  /*
+    ⚠️ حالات الحجز لم تعد بيانات تجربة: القائمة الخمس اعتُمدت من العميل
+       (2026-08-17) وانتقلت إلى ترحيل `20260817150000`، ويزرعها محفّز مع كل
+       منشأة تُنشأ. البذر هنا صار `upsert` على المفتاح الطبيعي لا على المعرّف،
+       حتى لا يُنشئ صفوفًا موازية بمعرّفات مختلفة للحالات نفسها.
+  */
   await up(
     'appointment_statuses',
-    APPOINTMENT_STATUSES.map((s) => ({ id: did('apstatus', s.key), organization_id: ORG_ID, key: s.key, name_ar: s.name, category: s.category, sort_order: s.order })),
-    'id',
+    APPOINTMENT_STATUSES.map((s) => ({ organization_id: ORG_ID, key: s.key, name_ar: s.name, category: s.category, sort_order: s.order })),
+    'organization_id,key',
   );
   await up('units', UNITS.map((u) => ({ id: did('unit', u.code), organization_id: ORG_ID, branch_id: null, code: u.code, name_ar: u.name })), 'id');
   await up('item_categories', ITEM_CATEGORIES.map((c) => ({ id: did('itemcat', c.code), organization_id: ORG_ID, branch_id: null, code: c.code, name_ar: c.name })), 'id');
@@ -740,6 +830,17 @@ async function run() {
   }
   await up('customers', customers, 'id');
 
+  /*
+    معرّفات الحالات تُقرأ من قاعدة البيانات لا تُشتق حتميًا: بعد اعتماد القائمة
+    صار يزرعها محفّز `organizations_seed_defaults` بمعرّفات من المحرّك.
+  */
+  const { data: statusRows, error: statusError } = await db
+    .from('appointment_statuses')
+    .select('id, key')
+    .eq('organization_id', ORG_ID);
+  if (statusError) throw new Error(`appointment_statuses: ${statusError.message}`);
+  const statusIdByKey = new Map(statusRows.map((s) => [s.key, s.id]));
+
   const providersByBranch = new Map();
   for (const p of PROVIDERS) {
     for (const bc of p.worksAt ?? (p.branch ? [p.branch] : [])) {
@@ -747,28 +848,105 @@ async function run() {
       providersByBranch.get(bc).push(p.code);
     }
   }
+  /*
+    توليد الحجوزات.
+
+    ⚠️ أُعيدت كتابته في المرحلة 4 لأن محفّز التحقق كشف تناقضًا حقيقيًا في
+       التوليد السابق: كان يحجز خدمة مشتركة لعميل في فرع **غير تشغيلي** لا
+       يملك صف `branch_services`، فيُنتج حجزًا لخدمة غير متاحة في فرعه.
+       كان يمر بصمت قبل وجود المحفّز.
+
+    القيود المُلتزَم بها هنا هي نفسها التي يفرضها المحرّك حرفيًا:
+      • الفرع تشغيلي (له ساعات عمل وخدمات مربوطة).
+      • الخدمة مربوطة بالفرع فعلًا.
+      • مقدّم الخدمة يعمل في الفرع ويقدّم تلك الخدمة.
+      • الموعد داخل الدوام (08:00–20:00) وليس يوم جمعة.
+      • لا تداخل لنفس المقدّم — قيد الاستبعاد يرفضه.
+  */
+  const providerServiceCodes = new Map();
+  for (const p of PROVIDERS) {
+    const worksAt = p.worksAt ?? (p.branch ? [p.branch] : []);
+    providerServiceCodes.set(
+      p.code,
+      SERVICES.filter((s) => s.shared || (s.branches ?? []).some((bc) => worksAt.includes(bc))).map(
+        (s) => s.code,
+      ),
+    );
+  }
+  const branchServiceCodes = new Map(
+    OPERATIONAL_BRANCHES.map((bc) => [
+      bc,
+      SERVICES.filter((s) => s.shared || (s.branches ?? []).includes(bc)).map((s) => s.code),
+    ]),
+  );
+
   const appointments = [];
-  for (let i = 0; i < appointmentCount; i += 1) {
-    const c = customers[Math.floor(rng() * customers.length)];
+  const bookedSlots = new Set(); // مفتاح: provider|instant — يمنع التداخل قبل الإرسال
+  const eligible = customers.filter((c) =>
+    OPERATIONAL_BRANCHES.some((bc) => branchId(bc) === c.branch_id),
+  );
+
+  let attempt = 0;
+  while (appointments.length < appointmentCount && attempt < appointmentCount * 20) {
+    attempt += 1;
+    const c = eligible[Math.floor(rng() * eligible.length)];
     const bc = BRANCHES.find((b) => branchId(b.code) === c.branch_id)?.code;
-    const provs = providersByBranch.get(bc) ?? [];
-    const svc = SERVICES.filter((s) => s.shared || (s.branches ?? []).includes(bc));
-    const past = i % 3 === 0;
+    const provs = (providersByBranch.get(bc) ?? []).filter((code) =>
+      (providerServiceCodes.get(code) ?? []).some((sc) =>
+        (branchServiceCodes.get(bc) ?? []).includes(sc),
+      ),
+    );
+    if (provs.length === 0) continue;
+
+    const providerCode = pick(provs);
+    const shared = (providerServiceCodes.get(providerCode) ?? []).filter((sc) =>
+      (branchServiceCodes.get(bc) ?? []).includes(sc),
+    );
+    if (shared.length === 0) continue;
+    const serviceCode = pick(shared);
+    const i = appointments.length;
+
+    /*
+      الوقت مشتق من `attempt` لا من عدد الناجحين: الاشتقاق من العداد الناجح
+      يُعيد نفس الفترة عند كل محاولة فاشلة فيتوقف التوليد مبكرًا.
+      المساحة هنا 6 ساعات × 20 يومًا لكل مقدّم = فسحة كافية.
+
+      ⚠️ الساعات بتوقيت UTC: 9..14 ⇒ 12:00–17:00 بتوقيت الرياض. النطاق مُضيَّق
+         ليسع **السبت** أيضًا (10:00–18:00) لا الأحد–الخميس وحدها (08:00–20:00)،
+         وأطول خدمة 45 دقيقة تبقى داخل الدوام في الحالتين.
+    */
+    const past = attempt % 3 === 0;
+    const hour = 9 + (attempt % 6);
+    const spread = Math.floor(attempt / 6);
+    const dayOffset = past ? -(1 + (spread % 20)) : 1 + (spread % 14);
+    const scheduledAt = isoDaysFromNow(dayOffset, hour, 0);
+
+    // الجمعة مغلقة في بذرة ساعات العمل
+    if (new Date(scheduledAt).getUTCDay() === 5) continue;
+
+    const providerUuid = did('provider', providerCode);
+    const key = `${providerUuid}|${scheduledAt}`;
+    if (bookedSlots.has(key)) continue;
+
     const status = past ? pick(['completed', 'no_show', 'cancelled']) : pick(['scheduled', 'confirmed']);
+    // الملغى لا يشغل الوقت في المحرّك، فلا نحجزه في خريطتنا أيضًا
+    if (!['cancelled', 'no_show'].includes(status)) bookedSlots.add(key);
+
     appointments.push({
       id: did('appt', `A-${i}`),
       organization_id: ORG_ID,
       branch_id: c.branch_id,
       reference_no: `APT-${String(i + 1).padStart(4, '0')}`,
       customer_id: c.id,
-      service_id: svc.length ? did('service', pick(svc).code) : null,
-      provider_id: provs.length ? did('provider', pick(provs)) : null,
-      status_id: did('apstatus', status),
-      scheduled_at: isoDaysFromNow(past ? -(1 + (i % 20)) : 1 + (i % 14), 9 + (i % 8), (i % 4) * 15),
-      duration_minutes: 30,
+      service_id: did('service', serviceCode),
+      provider_id: providerUuid,
+      status_id: statusIdByKey.get(status),
+      scheduled_at: scheduledAt,
+      // ⚠️ لا نرسل duration_minutes ولا ends_at: المحفّز يشتقهما من الخدمة.
+      //    إرسال 30 دقيقة ثابتة كان يخالف مدة الخدمة الفعلية.
     });
   }
-  await up('appointments', appointments, 'id');
+  await replaceOwnRows('appointments', appointments);
 
   console.log('\n▶ المرحلة 5 — حركات المخزون');
   const movements = [];

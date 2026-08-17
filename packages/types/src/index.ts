@@ -91,6 +91,8 @@ export interface ListQuery extends Partial<PaginationParams> {
 /** أكواد الأخطاء المعتمدة — راجع docs/API.md §3. */
 export type AppErrorCode =
   | 'UNAUTHENTICATED'
+  /** الجلسة صالحة لكن الإدارة أوقفت الحساب — سبب مختلف عن عدم المصادقة. */
+  | 'ACCOUNT_SUSPENDED'
   | 'PERMISSION_DENIED'
   | 'BRANCH_ACCESS_DENIED'
   | 'NOT_FOUND'

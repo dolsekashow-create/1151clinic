@@ -22,14 +22,14 @@ export const runtime = 'nodejs';
  */
 
 /** مسارات العودة المسموح بها. قائمة بيضاء لا تحقق نمطي. */
-const ALLOWED_NEXT = new Set(['/reset-password', '/login', '/dashboard']);
+const ALLOWED_NEXT = new Set(['/reset-password', '/login', '/app']);
 
 function safeNext(raw: string | null): string {
-  if (!raw) return '/dashboard';
-  if (!raw.startsWith('/') || raw.startsWith('//')) return '/dashboard';
+  if (!raw) return '/app';
+  if (!raw.startsWith('/') || raw.startsWith('//')) return '/app';
   // noUncheckedIndexedAccess مُفعَّل ⇒ الفهرسة قد تُرجع undefined
   const path = raw.split('?')[0]?.split('#')[0] ?? '';
-  return ALLOWED_NEXT.has(path) ? raw : '/dashboard';
+  return ALLOWED_NEXT.has(path) ? raw : '/app';
 }
 
 function errorRedirect(request: NextRequest, reason: string): NextResponse {

@@ -64,7 +64,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult<{ ne
     // نجاح ⇒ نُصفّر العدّاد حتى لا تُعاقب المحاولات المشروعة المتكررة
     await limit.reset();
 
-    return ok({ next: parsed.data.next ?? '/dashboard' });
+    return ok({ next: parsed.data.next ?? '/app' });
   } catch (error) {
     return toActionResult(error);
   }

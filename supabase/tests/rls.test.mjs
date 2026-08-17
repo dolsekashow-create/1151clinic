@@ -80,9 +80,24 @@ describe('عزل الفروع (Branch Isolation)', () => {
     );
   });
 
-  it('مستخدم بلا صلاحية عرض الفروع لا يرى أي فرع — حتى فرعه', async () => {
+  /*
+    ⚠️ تغيّرت القاعدة عمدًا في المرحلة 5 (ترحيل 160000).
+
+    كان هذا الاختبار يؤكد أن مستخدمًا بلا `organizations.branches.view` لا يرى
+    **أي** فرع ولا حتى فرعه. تبيّن أن ذلك يُعطّل النظام: دور الاستقبال لا يملك
+    تلك الصلاحية، فكانت قائمة الفروع في نموذج الحجز تظهر فارغة ويستحيل عليه
+    إنشاء أي حجز — وهو الدور الأساسي للحجز.
+
+    القاعدة الجديدة أضيق ما يمكن: يرى المستخدم **فروعه المُسندة فقط**. صلاحية
+    العرض تبقى شرطًا لتصفّح بقية فروع المنشأة.
+  */
+  it('مستخدم بلا صلاحية عرض الفروع يرى فرعه المُسنَد فقط', async () => {
     const { rows } = await asUser(client, IDS.userA1, 'select code from public.branches');
-    assert.equal(rows.length, 0);
+    assert.deepEqual(
+      rows.map((r) => r.code),
+      ['A1'],
+      'يجب أن يرى فرعه وحده — لا أكثر ولا أقل',
+    );
   });
 });
 
@@ -484,7 +499,11 @@ describe('دوال مخطط app غير قابلة للاستدعاء من الع
     );
   });
 
-  it('دور authenticated لا يملك سوى دوال القراءة الست', async () => {
+  /*
+    قائمة بيضاء صريحة: أي دالة جديدة تُمنح لدور عميل تُفشل هذا الاختبار حتى
+    تُضاف هنا بقرار واعٍ. هذا ما كشف ثغرة CRITICAL-01 سابقًا.
+  */
+  it('دور authenticated لا يملك سوى دوال القراءة المعتمدة', async () => {
     const { rows } = await client.query(`
       select p.proname
       from pg_proc p
@@ -493,14 +512,63 @@ describe('دوال مخطط app غير قابلة للاستدعاء من الع
         and has_function_privilege('authenticated', p.oid, 'execute')
       order by p.proname
     `);
+    /*
+      القائمة مرتّبة أبجديًا لأن التوكيد يقارن بعد `.sort()`.
+      م2 = النشر · م3 = إدارة المستخدمين · م4 = الحجز الداخلي · م6 = الحجز العام.
+    */
     assert.deepEqual(rows.map((r) => r.proname).sort(), [
+      'available_slots', // م4 — أوقات الموظفين، مشروطة بنطاق الفرع
       'can_access_branch',
+      'can_grant_role', // م3 — منع منح ما لا تملك
+      'can_manage_user', // م3 — نطاق إدارة المستخدمين
+      'create_public_booking', // م6
       'current_org_id',
       'current_user_id',
+      'get_public_booking', // م6
       'has_org_scope',
       'has_permission',
       'is_active_user',
+      'is_bookable_publicly', // م6 — بوابة الحجز العام
+      'is_org_published', // م2 — بوابة النشر
+      'is_within_business_hours', // م4
+      'provision_user', // م3 — التجهيز الذري
+      'public_available_slots', // م6
+      'public_bookable_providers', // م6
+      'public_bookable_services', // م6
+      'set_user_assignment', // م3
     ]);
+  });
+
+  /*
+    ⚠️ توسّعت هذه القائمة في المرحلة 6 توسّعًا مقصودًا.
+
+    كان `anon` يملك دالة واحدة (بوابة النشر). فتح الحجز العام يتطلب أن يستدعي
+    الزائر دوال الحجز — وهي بالضبط البديل عن فتح الجداول له. كل دالة هنا
+    `SECURITY DEFINER` وتُعيد فحص النشر والترابط داخلها، ولا تُرجع أي بيانات
+    شخصية. أي دالة جديدة تُمنح لـ`anon` تُفشل هذا الاختبار حتى تُضاف بقرار واعٍ.
+  */
+  it('دور anon لا يملك سوى بوابة النشر ودوال الحجز العام', async () => {
+    const { rows } = await client.query(`
+      select p.proname
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'app'
+        and has_function_privilege('anon', p.oid, 'execute')
+      order by p.proname
+    `);
+    assert.deepEqual(
+      rows.map((r) => r.proname).sort(),
+      [
+        'create_public_booking',
+        'get_public_booking',
+        'is_bookable_publicly',
+        'is_org_published',
+        'public_available_slots',
+        'public_bookable_providers',
+        'public_bookable_services',
+      ],
+      'anon يجب ألا يصل إلى أي دالة أمان أخرى',
+    );
   });
 });
 
@@ -566,6 +634,208 @@ describe('تطابق الفرع بين المستند وبنوده', () => {
 });
 
 /* ========================================================================== */
+/*  6.8) النشر العام ودور anon — المرحلة 2                                     */
+/*       الأهم: البيانات غير المنشورة يجب ألا تظهر لـ anon إطلاقًا             */
+/* ========================================================================== */
+
+/** ينفّذ استعلامًا بدور anon تمامًا كزائر الموقع العام. */
+async function asAnon(sql, params = []) {
+  await client.query('begin');
+  try {
+    await client.query('set local role anon');
+    const result = await client.query(sql, params);
+    await client.query('commit');
+    return result;
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  }
+}
+
+describe('النشر العام (is_public) ودور anon', () => {
+  it('الافتراضي: لا شيء منشور ⇒ anon يرى صفرًا', async () => {
+    for (const table of ['organizations', 'branches', 'services', 'service_providers']) {
+      const { rows } = await asAnon(`select count(*)::int as n from public.${table}`);
+      assert.equal(rows[0].n, 0, `${table}: يجب أن يكون صفرًا قبل النشر`);
+    }
+  });
+
+  it('نشر فرع بلا نشر المنشأة لا يكشفه — بوابة المنشأة', async () => {
+    await client.query('update public.branches set is_public = true where code = $1', ['A1']);
+    const { rows } = await asAnon('select count(*)::int as n from public.branches');
+    assert.equal(rows[0].n, 0, 'الفرع ظهر رغم أن المنشأة غير منشورة');
+  });
+
+  it('بعد نشر المنشأة يظهر الفرع المنشور فقط', async () => {
+    await client.query('update public.organizations set is_public = true where id = $1', [IDS.orgA]);
+    const { rows } = await asAnon('select code from public.branches order by code');
+    assert.deepEqual(
+      rows.map((r) => r.code),
+      ['A1'],
+      'يجب أن يظهر A1 وحده — A2 غير منشور',
+    );
+  });
+
+  it('منشأة أخرى منشورة لا تكشف بيانات المنشأة الأولى غير المنشورة', async () => {
+    await client.query('update public.organizations set is_public = true where id = $1', [IDS.orgB]);
+    await client.query('update public.branches set is_public = true where code = $1', ['B1']);
+    const { rows } = await asAnon('select code from public.branches order by code');
+    assert.deepEqual(rows.map((r) => r.code), ['A1', 'B1']);
+    // A2 ما زال غير منشور
+    assert.ok(!rows.some((r) => r.code === 'A2'));
+  });
+
+  it('إلغاء النشر يُخفي الفرع فورًا', async () => {
+    await client.query('update public.branches set is_public = false where code = $1', ['A1']);
+    const { rows } = await asAnon('select code from public.branches order by code');
+    assert.deepEqual(rows.map((r) => r.code), ['B1'], 'A1 يجب أن يختفي بعد إلغاء النشر');
+    await client.query('update public.branches set is_public = true where code = $1', ['A1']);
+  });
+
+  it('الفرع غير النشط لا يظهر حتى لو كان منشورًا', async () => {
+    await client.query("update public.branches set status = 'inactive' where code = $1", ['A1']);
+    const { rows } = await asAnon('select code from public.branches where code = $1', ['A1']);
+    assert.equal(rows.length, 0);
+    await client.query("update public.branches set status = 'active' where code = $1", ['A1']);
+  });
+
+  it('⭐ anon لا يستطيع قراءة الأعمدة غير الممنوحة (الطبقة الثانية)', async () => {
+    // hidden columns على service_providers
+    await client.query('update public.service_providers set is_public = true');
+    for (const col of ['phone', 'email', 'profile_id', 'notes', 'created_by']) {
+      let denied = false;
+      try {
+        await asAnon(`select ${col} from public.service_providers limit 1`);
+      } catch {
+        denied = true;
+      }
+      assert.ok(denied, `العمود ${col} يجب أن يكون محجوبًا عن anon`);
+    }
+    // العمود المسموح يعمل
+    const ok = await asAnon('select full_name_ar, specialty from public.service_providers limit 1');
+    assert.ok(Array.isArray(ok.rows));
+  });
+
+  it('⭐ anon لا يصل إلى أي جدول حسّاس', async () => {
+    for (const table of [
+      'customers',
+      'appointments',
+      'profiles',
+      'financial_transactions',
+      'treasury_movements',
+      'stock_movements',
+      'audit_logs',
+      'user_roles',
+      'user_branches',
+      'permissions',
+    ]) {
+      let denied = false;
+      try {
+        const { rows } = await asAnon(`select count(*)::int as n from public.${table}`);
+        // إن سُمح بالاستعلام يجب أن يكون صفرًا على الأقل
+        denied = rows[0].n === 0;
+      } catch {
+        denied = true;
+      }
+      assert.ok(denied, `${table}: anon حصل على صفوف`);
+    }
+  });
+
+  it('anon لا يستطيع الكتابة في أي جدول منشور', async () => {
+    for (const stmt of [
+      "insert into public.branches (organization_id, code, name_ar) values ('00000000-0000-4000-8000-000000000001','X','x')",
+      "update public.branches set name_ar = 'مُخترَق' where code = 'A1'",
+      "delete from public.branches where code = 'A1'",
+    ]) {
+      let denied = false;
+      try {
+        await asAnon(stmt);
+      } catch {
+        denied = true;
+      }
+      assert.ok(denied, `يجب رفض: ${stmt.slice(0, 40)}`);
+    }
+  });
+
+  it('جدول الربط لا يكشف خدمة غير منشورة', async () => {
+    // A1 منشور · نُنشئ خدمة غير منشورة مربوطة به
+    const svc = await client.query(
+      `insert into public.services (organization_id, code, name_ar, is_public)
+       values ($1, 'SVC-HIDDEN', 'خدمة غير منشورة', false) returning id`,
+      [IDS.orgA],
+    );
+    await client.query(
+      'insert into public.branch_services (branch_id, service_id) values ((select id from public.branches where code = $1), $2)',
+      ['A1', svc.rows[0].id],
+    );
+    const { rows } = await asAnon('select count(*)::int as n from public.branch_services');
+    assert.equal(rows[0].n, 0, 'الربط كشف خدمة غير منشورة');
+  });
+
+  it('نشر الخدمة يجعل الربط مرئيًا', async () => {
+    await client.query("update public.services set is_public = true where code = 'SVC-HIDDEN'");
+    const { rows } = await asAnon('select count(*)::int as n from public.branch_services');
+    assert.ok(rows[0].n > 0, 'الربط يجب أن يظهر بعد نشر الطرفين');
+  });
+});
+
+/* ========================================================================== */
+/*  6.9) فرض صلاحية النشر — المرحلة 2                                          */
+/* ========================================================================== */
+
+describe('صلاحية النشر مفروضة في المحرّك', () => {
+  /*
+    ⚠️ اختبار غير زائف: نبني دورًا يملك branches.update **بلا** branches.publish.
+       بدون ذلك يحجب RLS الصف فيُنتج 0 صفوف بلا خطأ، فيبدو المحفّز عاملًا
+       وهو لم يُختبر أصلًا — نفس فخّ الحركة المالية المُرحَّلة سابقًا.
+  */
+  it('مالك صلاحية التعديل بلا صلاحية النشر لا يستطيع نشر فرع', async () => {
+    await client.query(`
+      insert into public.roles (id, organization_id, key, name_ar, is_system)
+      values ('99999999-9999-4999-8999-999999999999', $1, 'test_branch_editor', 'محرّر فروع (اختبار)', false)
+      on conflict do nothing
+    `, [IDS.orgA]);
+    await client.query(`
+      insert into public.role_permissions (role_id, permission_id)
+      select '99999999-9999-4999-8999-999999999999', p.id
+      from public.permissions p
+      where p.key in ('organizations.branches.view', 'organizations.branches.update')
+      on conflict do nothing
+    `);
+    await client.query(`
+      insert into public.user_roles (user_id, role_id, scope)
+      values ($1, '99999999-9999-4999-8999-999999999999', 'branch')
+      on conflict do nothing
+    `, [IDS.userA1]);
+
+    // إثبات أن الصف مرئي وقابل للتعديل لهذا المستخدم (وإلا كان الاختبار زائفًا)
+    const rename = await asUser(
+      client,
+      IDS.userA1,
+      "update public.branches set name_ar = 'فرع أ-1 (مُعدَّل)' where code = 'A1'",
+    );
+    assert.equal(rename.rowCount, 1, 'المستخدم يملك التعديل فعلًا — الاختبار ذو معنى');
+
+    // نفس المستخدم يحاول تغيير حالة النشر
+    const error = await expectDenied(
+      client,
+      IDS.userA1,
+      "update public.branches set is_public = not is_public where code = 'A1'",
+    );
+    assert.ok(error, 'نُشر فرع بلا صلاحية نشر');
+    assert.match(error, /organizations\.branches\.publish/);
+  });
+
+  it('مالك صلاحية النشر ينشر بنجاح', async () => {
+    const before = await client.query("select is_public from public.branches where code = 'A2'");
+    await asUser(client, IDS.userOrgAdmin, "update public.branches set is_public = true where code = 'A2'");
+    const after = await client.query("select is_public from public.branches where code = 'A2'");
+    assert.equal(before.rows[0].is_public, false);
+    assert.equal(after.rows[0].is_public, true, 'company_admin يملك كل الصلاحيات فيجب أن ينجح');
+  });
+});
+
+/* ========================================================================== */
 /*  7) اختبارات شاملة على المخطط — تمنع نسيان جدول جديد بلا حماية              */
 /* ========================================================================== */
 
@@ -585,21 +855,56 @@ describe('تغطية المخطط', () => {
     );
   });
 
-  it('كل جدول عليه RLS لديه سياسة واحدة على الأقل', async () => {
-    const { rows } = await client.query(`
-      select c.relname
-      from pg_class c
-      join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
-        and not exists (select 1 from pg_policies p
-                        where p.schemaname = 'public' and p.tablename = c.relname)
-      order by c.relname
-    `);
+  /*
+    غرض هذا الاختبار: منع تفعيل RLS ثم نسيان السياسات — وهي حالة تحجب الجدول
+    بالكامل **بصمت** فتظهر كأنها بيانات مفقودة لا كخطأ صلاحيات.
+
+    ⚠️ الحجب الكامل **المقصود** حالة مشروعة ومختلفة: جداول لا يلمسها أي دور
+       عميل إطلاقًا، ويصلها الخادم عبر دوال `SECURITY DEFINER` وحدها. لذلك
+       تُدرَج هنا صراحةً بقرار واعٍ بدل تعطيل الاختبار.
+  */
+  const DENY_ALL_BY_DESIGN = [
+    // م6 — عدّادات الحد من المعدّل: فتحها للعميل يعني استهلاك عدّادات الآخرين
+    'rate_limit_counters',
+    // م6 — مفاتيح عدم التكرار: قراءتها تسمح بانتحال إعادة إرسال طلب أي زائر
+    'booking_idempotency',
+  ];
+
+  it('كل جدول عليه RLS لديه سياسة — إلا المحجوب عمدًا', async () => {
+    const { rows } = await client.query(
+      `select c.relname
+       from pg_class c
+       join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
+         and not exists (select 1 from pg_policies p
+                         where p.schemaname = 'public' and p.tablename = c.relname)
+         and c.relname <> all($1)
+       order by c.relname`,
+      [DENY_ALL_BY_DESIGN],
+    );
     assert.deepEqual(
       rows.map((r) => r.relname),
       [],
       `جداول بلا سياسات (محجوبة بالكامل بصمت): ${rows.map((r) => r.relname).join(', ')}`,
     );
+  });
+
+  it('الجداول المحجوبة عمدًا محجوبة فعلًا عن كل دور عميل', async () => {
+    for (const table of DENY_ALL_BY_DESIGN) {
+      const { rows } = await client.query(
+        `select
+           has_table_privilege('anon', $1, 'select') as anon_select,
+           has_table_privilege('authenticated', $1, 'select') as auth_select,
+           has_table_privilege('anon', $1, 'insert') as anon_insert,
+           has_table_privilege('authenticated', $1, 'insert') as auth_insert`,
+        [`public.${table}`],
+      );
+      assert.deepEqual(
+        rows[0],
+        { anon_select: false, auth_select: false, anon_insert: false, auth_insert: false },
+        `${table} مكشوف لدور عميل`,
+      );
+    }
   });
 
   it('كل سياسة UPDATE لديها WITH CHECK', async () => {

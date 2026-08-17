@@ -4,7 +4,7 @@
  * ⚠️  ملف مُولّد آليًا — لا تُعدّله يدويًا.
  *     التوليد: pnpm db:types:generate   (يشتقّ الأنواع من supabase/migrations)
  *
- * عدد الجداول: 44
+ * عدد الجداول: 48
  */
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
@@ -63,6 +63,8 @@ export type Database = {
           created_by: string | null;
           updated_by: string | null;
           deleted_at: string | null;
+          ends_at: string;
+          status_category: string;
         };
         Insert: {
           id?: string;
@@ -81,6 +83,8 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           deleted_at?: string | null;
+          ends_at: string;
+          status_category?: string;
         };
         Update: {
           id?: string;
@@ -99,6 +103,8 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           deleted_at?: string | null;
+          ends_at?: string;
+          status_category?: string;
         };
         Relationships: [];
       };
@@ -201,6 +207,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      booking_idempotency: {
+        Row: {
+          key_hash: string;
+          appointment_id: string;
+          reference_no: string;
+          created_at: string;
+        };
+        Insert: {
+          key_hash: string;
+          appointment_id: string;
+          reference_no: string;
+          created_at?: string;
+        };
+        Update: {
+          key_hash?: string;
+          appointment_id?: string;
+          reference_no?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       branch_services: {
         Row: {
           branch_id: string;
@@ -242,6 +269,7 @@ export type Database = {
           created_by: string | null;
           updated_by: string | null;
           deleted_at: string | null;
+          is_public: boolean;
         };
         Insert: {
           id?: string;
@@ -259,6 +287,7 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           deleted_at?: string | null;
+          is_public?: boolean;
         };
         Update: {
           id?: string;
@@ -276,6 +305,49 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           deleted_at?: string | null;
+          is_public?: boolean;
+        };
+        Relationships: [];
+      };
+      business_hours: {
+        Row: {
+          id: string;
+          organization_id: string;
+          branch_id: string;
+          weekday: number;
+          opens_at: string;
+          closes_at: string;
+          is_closed: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          branch_id: string;
+          weekday: number;
+          opens_at: string;
+          closes_at: string;
+          is_closed?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          branch_id?: string;
+          weekday?: number;
+          opens_at?: string;
+          closes_at?: string;
+          is_closed?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
         };
         Relationships: [];
       };
@@ -1105,6 +1177,7 @@ export type Database = {
           created_by: string | null;
           updated_by: string | null;
           deleted_at: string | null;
+          is_public: boolean;
         };
         Insert: {
           id?: string;
@@ -1118,6 +1191,7 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           deleted_at?: string | null;
+          is_public?: boolean;
         };
         Update: {
           id?: string;
@@ -1131,6 +1205,7 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           deleted_at?: string | null;
+          is_public?: boolean;
         };
         Relationships: [];
       };
@@ -1237,6 +1312,30 @@ export type Database = {
           provider_id?: string;
           branch_id?: string;
           is_primary?: boolean;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      provider_services: {
+        Row: {
+          provider_id: string;
+          service_id: string;
+          is_available: boolean;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          provider_id: string;
+          service_id: string;
+          is_available?: boolean;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          provider_id?: string;
+          service_id?: string;
+          is_available?: boolean;
           created_at?: string;
           created_by?: string | null;
         };
@@ -1446,6 +1545,24 @@ export type Database = {
         };
         Relationships: [];
       };
+      rate_limit_counters: {
+        Row: {
+          bucket_key: string;
+          window_start: string;
+          hits: number;
+        };
+        Insert: {
+          bucket_key: string;
+          window_start?: string;
+          hits?: number;
+        };
+        Update: {
+          bucket_key?: string;
+          window_start?: string;
+          hits?: number;
+        };
+        Relationships: [];
+      };
       role_permissions: {
         Row: {
           role_id: string;
@@ -1522,6 +1639,7 @@ export type Database = {
           created_by: string | null;
           updated_by: string | null;
           deleted_at: string | null;
+          is_public: boolean;
         };
         Insert: {
           id?: string;
@@ -1541,6 +1659,7 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           deleted_at?: string | null;
+          is_public?: boolean;
         };
         Update: {
           id?: string;
@@ -1560,6 +1679,7 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           deleted_at?: string | null;
+          is_public?: boolean;
         };
         Relationships: [];
       };
@@ -1579,6 +1699,7 @@ export type Database = {
           created_by: string | null;
           updated_by: string | null;
           deleted_at: string | null;
+          is_public: boolean;
         };
         Insert: {
           id?: string;
@@ -1595,6 +1716,7 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           deleted_at?: string | null;
+          is_public?: boolean;
         };
         Update: {
           id?: string;
@@ -1611,6 +1733,7 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           deleted_at?: string | null;
+          is_public?: boolean;
         };
         Relationships: [];
       };
@@ -2150,7 +2273,91 @@ export type Database = {
       };
     };
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      available_slots: {
+        Args: {
+          p_branch: string | null;
+          p_service: string | null;
+          p_provider: string | null;
+          p_date: string | null;
+        };
+        Returns: { slot_start: string }[];
+      };
+      consume_rate_limit: {
+        Args: {
+          p_bucket_key: string | null;
+          p_limit: number | null;
+          p_window_seconds: number | null;
+        };
+        Returns: { allowed: boolean; remaining: number; reset_at: string }[];
+      };
+      create_public_booking: {
+        Args: {
+          p_branch: string | null;
+          p_service: string | null;
+          p_provider: string | null;
+          p_slot: string | null;
+          p_full_name: string | null;
+          p_phone: string | null;
+          p_email: string | null;
+          p_notes: string | null;
+          p_idempotency_hash: string | null;
+        };
+        Returns: { reference_no: string; reused: boolean }[];
+      };
+      get_public_booking: {
+        Args: {
+          p_reference: string | null;
+        };
+        Returns: { reference_no: string; scheduled_at: string; duration_minutes: number; branch_name: string; branch_city: string; branch_phone: string; service_name: string; provider_name: string; status_key: string }[];
+      };
+      provision_user: {
+        Args: {
+          p_user_id: string | null;
+          p_full_name_ar: string | null;
+          p_role_id: string | null;
+          p_scope: string | null;
+          p_branch_ids: string[] | null;
+          p_phone?: string | null;
+          p_job_title?: string | null;
+          p_employee_code?: string | null;
+          p_default_branch_id?: string | null;
+          p_provider_id?: string | null;
+        };
+        Returns: string;
+      };
+      public_available_slots: {
+        Args: {
+          p_branch: string | null;
+          p_service: string | null;
+          p_provider: string | null;
+          p_date: string | null;
+        };
+        Returns: { slot_start: string }[];
+      };
+      public_bookable_providers: {
+        Args: {
+          p_branch: string | null;
+          p_service: string | null;
+        };
+        Returns: { id: string; full_name_ar: string; specialty: string }[];
+      };
+      public_bookable_services: {
+        Args: {
+          p_branch: string | null;
+        };
+        Returns: { id: string; name_ar: string; duration_minutes: number }[];
+      };
+      set_user_assignment: {
+        Args: {
+          p_user_id: string | null;
+          p_role_id: string | null;
+          p_scope: string | null;
+          p_branch_ids: string[] | null;
+        };
+        Returns: undefined;
+      };
+    };
     Enums: { [_ in never]: never };
     CompositeTypes: { [_ in never]: never };
   };

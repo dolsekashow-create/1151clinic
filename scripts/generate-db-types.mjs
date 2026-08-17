@@ -61,6 +61,69 @@ for (const column of columns) {
   tables.get(column.table_name).push(column);
 }
 
+/*
+  دوال RPC المكشوفة عبر PostgREST.
+
+  PostgREST يكشف دوال المخططات المكشوفة فقط (public افتراضيًا)، لذلك دوال
+  مخطط `app` غير قابلة للنداء من العميل — وهذا مقصود. ما يُكشف هو أغلفة صريحة
+  في `public`، وهي ما نُولّد أنواعه هنا.
+*/
+const { rows: functions } = await client.query(`
+  select p.proname                                   as name,
+         pg_get_function_arguments(p.oid)            as args,
+         pg_get_function_result(p.oid)               as result
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.prokind = 'f'
+    -- service_role مشمول عمدًا: بعض الدوال خادمية بحتة (عدّاد الحد من المعدّل)
+    -- ولا تُمنح لدور عميل إطلاقًا، لكن التطبيق يستدعيها بمفتاح الخدمة.
+    -- استثناؤها كان يُنتج أنواعًا ناقصة لدوال تُستدعى فعلًا.
+    and (
+      has_function_privilege('authenticated', p.oid, 'execute')
+      or has_function_privilege('service_role', p.oid, 'execute')
+    )
+  order by p.proname
+`);
+
+/** `p_user_id uuid, p_ids uuid[] DEFAULT NULL` → [{ name, type, optional }] */
+function parseArgs(signature) {
+  if (!signature.trim()) return [];
+  return signature.split(/\s*,\s*(?![^(]*\))/).map((part) => {
+    const optional = /\bdefault\b/i.test(part);
+    const cleaned = part.replace(/\s+default\s+.*$/i, '').trim();
+    const [name, ...typeParts] = cleaned.split(/\s+/);
+    const pgType = typeParts.join(' ');
+    const isArray = pgType.endsWith('[]');
+    const base = isArray ? pgType.slice(0, -2).trim() : pgType;
+    const ts = tsType(base === 'uuid' || base === 'text' ? 'text' : base, null);
+    return { name, type: isArray ? `${ts}[]` : ts, optional };
+  });
+}
+
+/**
+ * نوع الإرجاع.
+ * ⚠️ `TABLE(...)` و `SETOF x` يُرجعان مصفوفة في PostgREST لا قيمة مفردة —
+ *    معاملتهما كنوع بسيط تُنتج أنواعًا خاطئة تمر من المُدقّق ثم تنهار وقت التشغيل.
+ */
+function returnType(result) {
+  if (/^void$/i.test(result)) return 'undefined';
+
+  const table = /^TABLE\((.*)\)$/is.exec(result);
+  if (table) {
+    const fields = table[1].split(/\s*,\s*/).map((f) => {
+      const [name, ...typeParts] = f.trim().split(/\s+/);
+      return `${name}: ${tsType(typeParts.join(' '), null)}`;
+    });
+    return `{ ${fields.join('; ')} }[]`;
+  }
+
+  const setof = /^SETOF\s+(.+)$/i.exec(result);
+  if (setof) return `${tsType(setof[1], null)}[]`;
+
+  return tsType(result, null);
+}
+
 const out = [];
 out.push('/**');
 out.push(' * Supabase database types.');
@@ -117,7 +180,29 @@ out.push('    };');
 //    فيصبح تقاطع (Tables & Views) لأي جدول = never وتنهار كل الأنواع.
 //    هذا الشكل هو ما يُخرجه مولّد Supabase الرسمي.
 out.push('    Views: { [_ in never]: never };');
-out.push('    Functions: { [_ in never]: never };');
+
+if (functions.length === 0) {
+  out.push('    Functions: { [_ in never]: never };');
+} else {
+  out.push('    Functions: {');
+  for (const fn of functions) {
+    const args = parseArgs(fn.args);
+    out.push(`      ${fn.name}: {`);
+    if (args.length === 0) {
+      out.push('        Args: Record<PropertyKey, never>;');
+    } else {
+      out.push('        Args: {');
+      for (const arg of args) {
+        out.push(`          ${arg.name}${arg.optional ? '?' : ''}: ${arg.type} | null;`);
+      }
+      out.push('        };');
+    }
+    out.push(`        Returns: ${returnType(fn.result.trim())};`);
+    out.push('      };');
+  }
+  out.push('    };');
+}
+
 out.push('    Enums: { [_ in never]: never };');
 out.push('    CompositeTypes: { [_ in never]: never };');
 out.push('  };');
@@ -129,5 +214,7 @@ writeFileSync(target, out.join('\n'), 'utf8');
 
 await db.close();
 
-console.log(`✔ تم توليد ${target}\n  الجداول: ${tables.size} · الأعمدة: ${columns.length}`);
+console.log(
+  `✔ تم توليد ${target}\n  الجداول: ${tables.size} · الأعمدة: ${columns.length} · دوال RPC: ${functions.length}`,
+);
 setTimeout(() => process.exit(0), 250).unref();

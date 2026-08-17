@@ -47,6 +47,18 @@ export const errors = {
       httpStatus: 401,
     }),
 
+  /**
+   * الحساب موقوف أو غير نشط.
+   * منفصل عن `unauthenticated` لأن السبب مختلف: الجلسة صالحة والحساب موجود،
+   * لكن الإدارة أوقفته — والمستخدم يستحق رسالة تقول ذلك.
+   */
+  accountSuspended: (): AppError =>
+    new AppError({
+      code: 'ACCOUNT_SUSPENDED',
+      userMessage: 'هذا الحساب موقوف. راجع إدارة النظام.',
+      httpStatus: 403,
+    }),
+
   permissionDenied: (required: string): AppError =>
     new AppError({
       code: 'PERMISSION_DENIED',
@@ -61,6 +73,20 @@ export const errors = {
       userMessage: 'لا تملك صلاحية الوصول إلى بيانات هذا الفرع',
       httpStatus: 403,
       details: { branchId },
+    }),
+
+  /**
+   * رفض بصلاحية أو نطاق مع **رسالة محددة** من قاعدة البيانات.
+   *
+   * ⚠️ يُستخدم فقط لرسائل الحُرّاس المكتوبة للمستخدم النهائي («لا يمكنك منح دور
+   *    يحتوي صلاحيات لا تملكها»). لا يُمرَّر إليه نص خطأ خام من المحرّك، لأن ذلك
+   *    يكشف أسماء جداول وقيودًا. للرفض العام استخدم `permissionDenied`.
+   */
+  operationDenied: (userMessage: string): AppError =>
+    new AppError({
+      code: 'PERMISSION_DENIED',
+      userMessage,
+      httpStatus: 403,
     }),
 
   notFound: (entity: string): AppError =>
