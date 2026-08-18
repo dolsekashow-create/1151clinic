@@ -1,5 +1,6 @@
+import Image from 'next/image';
 import Link from 'next/link';
-import { CalendarPlus, LogIn, Menu, Sparkles } from 'lucide-react';
+import { CalendarPlus, LogIn, Menu } from 'lucide-react';
 import { Button } from '@erp/ui';
 import { publicEnv } from '@/config/env';
 
@@ -29,14 +30,15 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-20 max-w-7xl items-center gap-4 px-4 lg:px-8">
           {/* الشعار — يمين في RTL */}
-          <Link href="/" className="flex shrink-0 items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-full bg-[var(--clinic-rose)]/10 text-[var(--clinic-rose)]">
-              <Sparkles className="size-5" aria-hidden />
-            </span>
-            <span className="hidden leading-tight sm:block">
-              <span className="block text-lg font-bold tracking-tight text-clinic-ink">{appName}</span>
-              <span className="block text-[11px] text-muted-foreground">عيادات التجميل</span>
-            </span>
+          <Link href="/" className="flex shrink-0 items-center" aria-label="14Clinic — الصفحة الرئيسية">
+            <Image
+              src="/logo.png"
+              alt="14Clinic — عيادات التجميل"
+              width={600}
+              height={199}
+              priority
+              className="h-10 w-auto sm:h-12"
+            />
           </Link>
 
           <nav className="mx-auto hidden items-center gap-1 lg:flex" aria-label="أقسام الموقع">
@@ -91,12 +93,13 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <div className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-sm">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-9 items-center justify-center rounded-full bg-[var(--clinic-rose)]/10 text-[var(--clinic-rose)]">
-                  <Sparkles className="size-4" aria-hidden />
-                </span>
-                <span className="font-bold text-clinic-ink">{appName}</span>
-              </div>
+              <Image
+                src="/logo.png"
+                alt="14Clinic — عيادات التجميل"
+                width={600}
+                height={199}
+                className="h-10 w-auto"
+              />
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                 خدمات تجميلية بإشراف نخبة من الأطباء المتخصصين، وبأعلى معايير الأمان والجودة.
               </p>
