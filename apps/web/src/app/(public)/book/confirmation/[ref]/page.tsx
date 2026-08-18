@@ -46,7 +46,7 @@ export default async function ConfirmationPage({ params }: PageProps) {
   const rows: ReadonlyArray<[string, string]> = [
     ['الخدمة', booking.serviceName ?? '—'],
     ['الطبيب', booking.providerName ?? '—'],
-    ['الفرع', booking.branchName],
+    ['العيادة', booking.branchName],
     ['التاريخ', dateLabel],
     ['الوقت', timeLabel],
     ['المدة', `${booking.durationMinutes} دقيقة`],
@@ -58,7 +58,7 @@ export default async function ConfirmationPage({ params }: PageProps) {
         <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
           <CalendarCheck className="size-7" aria-hidden />
         </span>
-        <h1 className="mt-4 text-2xl font-bold">تم تأكيد حجزك</h1>
+        <h1 className="mt-4 text-3xl font-bold tracking-tight text-clinic-ink">تم تأكيد حجزك</h1>
         <p className="mt-2 text-muted-foreground">احتفظ برقم الحجز للمراجعة عند الحضور.</p>
 
         <p className="mt-6 text-xs text-muted-foreground">رقم الحجز</p>

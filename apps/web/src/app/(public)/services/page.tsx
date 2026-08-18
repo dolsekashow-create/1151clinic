@@ -11,9 +11,9 @@ export default async function PublicServicesPage() {
   const services = await listPublicServices();
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 lg:px-6">
-      <h1 className="text-2xl font-bold">خدماتنا</h1>
-      <p className="mt-2 text-muted-foreground">تعرّف على الخدمات المتوفرة في مراكزنا.</p>
+    <div className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
+      <h1 className="text-3xl font-bold tracking-tight text-clinic-ink">خدماتنا التجميلية</h1>
+      <p className="mt-2 text-muted-foreground">مجموعة متكاملة من خدمات التجميل بإشراف نخبة من الأطباء المتخصصين.</p>
 
       {services.length === 0 ? (
         <div className="mt-8">

@@ -11,9 +11,9 @@ export default async function PublicContactPage() {
   const branches = await listPublicBranches();
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12 lg:px-6">
-      <h1 className="text-2xl font-bold">تواصل معنا</h1>
-      <p className="mt-2 text-muted-foreground">اتصل بالفرع الأقرب إليك.</p>
+    <div className="mx-auto max-w-4xl px-4 py-14 lg:px-8">
+      <h1 className="text-3xl font-bold tracking-tight text-clinic-ink">تواصل معنا</h1>
+      <p className="mt-2 text-muted-foreground">اتصل بالعيادة الأقرب إليك، أو احجز موعدك مباشرة عبر الموقع.</p>
 
       {branches.length === 0 ? (
         <div className="mt-8">

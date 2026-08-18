@@ -14,16 +14,16 @@ export default async function PublicProvidersPage() {
   const providers = await listPublicProviders();
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 lg:px-6">
-      <h1 className="text-2xl font-bold">أطباؤنا</h1>
-      <p className="mt-2 text-muted-foreground">نخبة من الأطباء وأخصائيي الرعاية.</p>
+    <div className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
+      <h1 className="text-3xl font-bold tracking-tight text-clinic-ink">أطباؤنا</h1>
+      <p className="mt-2 text-muted-foreground">نخبة من أطباء التجميل والأخصائيين المعتمدين.</p>
 
       {providers.length === 0 ? (
         <div className="mt-8">
           <EmptyState
             icon={<Stethoscope aria-hidden />}
             title="لا يوجد أطباء منشورون حاليًا"
-            description="سيظهر الأطباء هنا عند نشرهم من لوحة الإدارة."
+            description="يظهر الأطباء هنا فور نشرهم من لوحة الإدارة."
           />
         </div>
       ) : (

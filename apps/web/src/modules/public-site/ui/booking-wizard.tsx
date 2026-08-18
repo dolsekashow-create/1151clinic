@@ -10,7 +10,7 @@ import type { PublicOption } from '../booking';
 /** يطابق `HONEYPOT_FIELD` في طبقة الحد من المعدّل. */
 const HONEYPOT_FIELD = 'website_url';
 
-const STEPS = ['الفرع', 'الخدمة', 'الطبيب', 'اليوم', 'الوقت', 'بياناتك', 'تأكيد'] as const;
+const STEPS = ['العيادة', 'الخدمة', 'الطبيب', 'اليوم', 'الوقت', 'بياناتك', 'تأكيد'] as const;
 
 interface Selection {
   branch: PublicBranch | null;
@@ -167,10 +167,10 @@ export function BookingWizard({ branches }: { branches: readonly PublicBranch[] 
   const nextDays = useMemo(() => buildNextDays(21), []);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 lg:px-6">
-      <h1 className="text-2xl font-bold">احجز موعدك</h1>
+    <div className="mx-auto max-w-3xl px-4 py-12 lg:px-8">
+      <h1 className="text-3xl font-bold tracking-tight text-clinic-ink">احجز موعدك التجميلي</h1>
       <p className="mt-2 text-muted-foreground">
-        بلا تسجيل دخول. اختر الفرع والخدمة والطبيب والوقت المناسب.
+        بلا تسجيل دخول. اختر العيادة والخدمة والطبيب والوقت المناسب لك.
       </p>
 
       <Stepper current={step} />
@@ -184,9 +184,9 @@ export function BookingWizard({ branches }: { branches: readonly PublicBranch[] 
       <div className="mt-6">
         {step === 0 ? (
           <ChoiceList
-            title="اختر الفرع"
+            title="اختر العيادة"
             icon={<MapPin aria-hidden />}
-            empty="لا توجد فروع متاحة للحجز حاليًا."
+            empty="لا توجد عيادات متاحة للحجز حاليًا."
             items={branches.map((b) => ({
               id: b.id,
               nameAr: b.nameAr,
@@ -208,7 +208,7 @@ export function BookingWizard({ branches }: { branches: readonly PublicBranch[] 
             title="اختر الخدمة"
             icon={<Sparkles aria-hidden />}
             loading={loading}
-            empty="لا توجد خدمات متاحة للحجز في هذا الفرع."
+            empty="لا توجد خدمات متاحة للحجز في هذه العيادة."
             items={services}
             onSelect={(service) => {
               setSel((prev) => ({ ...prev, service, provider: null, date: '', slot: '' }));
@@ -223,7 +223,7 @@ export function BookingWizard({ branches }: { branches: readonly PublicBranch[] 
             title="اختر الطبيب"
             icon={<Stethoscope aria-hidden />}
             loading={loading}
-            empty="لا يوجد طبيب متاح لهذه الخدمة في هذا الفرع."
+            empty="لا يوجد طبيب متاح لهذه الخدمة في هذه العيادة."
             items={providers}
             onSelect={(provider) => {
               setSel((prev) => ({ ...prev, provider, date: '', slot: '' }));
@@ -265,7 +265,7 @@ export function BookingWizard({ branches }: { branches: readonly PublicBranch[] 
               <p className="text-sm text-muted-foreground">جارٍ جلب الأوقات المتاحة…</p>
             ) : slots.length === 0 ? (
               <Alert variant="warning" title="لا أوقات متاحة في هذا اليوم">
-                قد يكون الفرع مغلقًا في هذا اليوم أو مواعيد الطبيب كاملة. اختر يومًا آخر.
+                قد تكون العيادة مغلقة في هذا اليوم أو مواعيد الطبيب كاملة. اختر يومًا آخر.
               </Alert>
             ) : (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
@@ -344,7 +344,7 @@ export function BookingWizard({ branches }: { branches: readonly PublicBranch[] 
               <h2 className="mb-3 text-lg font-semibold">تأكيد الحجز</h2>
               <Card>
                 <CardContent className="divide-y divide-border p-0">
-                  <SummaryRow label="الفرع" value={sel.branch?.nameAr ?? '—'} />
+                  <SummaryRow label="العيادة" value={sel.branch?.nameAr ?? '—'} />
                   <SummaryRow label="الخدمة" value={sel.service?.nameAr ?? '—'} />
                   <SummaryRow label="الطبيب" value={sel.provider?.nameAr ?? '—'} />
                   <SummaryRow label="التاريخ" value={sel.slot ? formatDate(sel.slot) : '—'} />

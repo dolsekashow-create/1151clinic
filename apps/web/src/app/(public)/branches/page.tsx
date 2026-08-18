@@ -3,7 +3,7 @@ import { MapPin, Phone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, EmptyState } from '@erp/ui';
 import { listPublicBranches } from '@/modules/public-site/repository';
 
-export const metadata: Metadata = { title: 'الفروع', robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: 'عياداتنا', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 /** ⚠️ يقرأ بدور anon عبر RLS — الفروع المنشورة فقط. لا مفتاح سري. */
@@ -11,15 +11,15 @@ export default async function PublicBranchesPage() {
   const branches = await listPublicBranches();
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 lg:px-6">
-      <h1 className="text-2xl font-bold">فروعنا</h1>
-      <p className="mt-2 text-muted-foreground">اختر الفرع الأقرب إليك.</p>
+    <div className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
+      <h1 className="text-3xl font-bold tracking-tight text-clinic-ink">عياداتنا</h1>
+      <p className="mt-2 text-muted-foreground">اختر العيادة الأقرب إليك واحجز موعدك في دقائق.</p>
 
       {branches.length === 0 ? (
         <div className="mt-8">
           <EmptyState
             icon={<MapPin aria-hidden />}
-            title="لا توجد فروع منشورة حاليًا"
+            title="لا توجد عيادات منشورة حاليًا"
             description="ستظهر الفروع هنا عند نشرها من لوحة الإدارة."
           />
         </div>

@@ -191,3 +191,60 @@
     unicode-bidi: isolate;
   }
 }
+
+/* ==========================================================================
+   سمة الموقع العام — عيادات التجميل
+   ==========================================================================
+   ⚠️ مقصورة على `.theme-clinic` وحدها: لوحة الإدارة تبقى بسمتها الزرقاء.
+      خلط السمتين في `:root` كان سيغيّر لون كل شاشة داخلية بلا داعٍ.
+   ⚠️ نفس أسماء الرموز المنطقية — لا مكوّن يعرف أن السمة تغيّرت.
+   ========================================================================== */
+.theme-clinic {
+  --background: oklch(0.995 0.004 20);
+  --foreground: oklch(0.25 0.03 320);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0.03 320);
+
+  /* وردي العلامة — مأخوذ من هوية 14Clinic */
+  --primary: oklch(0.62 0.17 5);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.97 0.015 20);
+  --secondary-foreground: oklch(0.32 0.05 340);
+
+  --muted: oklch(0.97 0.01 20);
+  --muted-foreground: oklch(0.52 0.03 330);
+
+  --accent: oklch(0.95 0.03 15);
+  --accent-foreground: oklch(0.32 0.06 340);
+
+  --border: oklch(0.92 0.015 20);
+  --input: oklch(0.92 0.015 20);
+  --ring: oklch(0.62 0.17 5);
+
+  /* كحلي داكن للأزرار الثانوية والترويسة — مقابل بصري للوردي */
+  --clinic-ink: oklch(0.28 0.05 265);
+  --clinic-blush: oklch(0.97 0.02 15);
+  --clinic-rose: oklch(0.62 0.17 5);
+}
+
+@layer utilities {
+  .bg-clinic-ink {
+    background-color: var(--clinic-ink);
+  }
+  .text-clinic-ink {
+    color: var(--clinic-ink);
+  }
+  .bg-clinic-blush {
+    background-color: var(--clinic-blush);
+  }
+  /* تدرّج ناعم للأقسام — يفصل الأقسام بلا خطوط حادة */
+  .bg-clinic-gradient {
+    background-image: linear-gradient(
+      180deg,
+      var(--clinic-blush) 0%,
+      color-mix(in oklch, var(--clinic-blush) 40%, var(--background)) 100%
+    );
+  }
+}
