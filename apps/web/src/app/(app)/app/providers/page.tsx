@@ -48,6 +48,7 @@ async function Content({ searchParams }: PageProps) {
       error={result.success ? null : result.error}
       canCreate={hasPermission(ctx, 'services.providers.manage')}
       canManage={hasPermission(ctx, 'services.providers.manage')}
+      canDelete={hasPermission(ctx, 'services.providers.delete')}
       canPublish={hasPermission(ctx, 'services.providers.publish')}
     />
   );

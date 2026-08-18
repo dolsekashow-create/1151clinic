@@ -50,6 +50,7 @@ async function Content({ searchParams }: PageProps) {
       error={result.success ? null : result.error}
       canCreate={hasPermission(ctx, 'organizations.branches.create')}
       canUpdate={hasPermission(ctx, 'organizations.branches.update')}
+      canDelete={hasPermission(ctx, 'organizations.branches.delete')}
       canPublish={hasPermission(ctx, 'organizations.branches.publish')}
     />
   );

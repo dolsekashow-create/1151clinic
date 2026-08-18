@@ -26,6 +26,8 @@ import type { ApiErrorShape, Paginated } from '@erp/types';
 import { AdminResourceTable, type AdminColumn } from '@/shared/components/admin-resource-table';
 import { PublishToggle } from '@/shared/components/publish-toggle';
 import { BranchHoursDrawer } from '@/modules/appointments/ui/branch-hours-drawer';
+import { DeleteButton } from '@/shared/components/delete-button';
+import { archiveRecordAction } from '@/modules/shared/archive';
 import type { BranchRow } from '../repository';
 import { createBranchAction, setBranchPublishAction, updateBranchAction } from '../actions';
 
@@ -36,7 +38,7 @@ const COLUMNS: readonly AdminColumn[] = [
   { key: 'phone', label: 'الهاتف', width: 'w-32' },
   { key: 'status', label: 'الحالة', align: 'center', width: 'w-24' },
   { key: 'public', label: 'الموقع العام', align: 'center', width: 'w-28' },
-  { key: 'actions', label: 'إجراءات', align: 'center', width: 'w-44' },
+  { key: 'actions', label: 'إجراءات', align: 'center', width: 'w-56' },
 ];
 
 export interface BranchesViewProps {
@@ -45,6 +47,7 @@ export interface BranchesViewProps {
   canCreate: boolean;
   canUpdate: boolean;
   canPublish: boolean;
+  canDelete: boolean;
 }
 
 export function BranchesView({
@@ -53,6 +56,7 @@ export function BranchesView({
   canCreate,
   canUpdate,
   canPublish,
+  canDelete,
 }: BranchesViewProps) {
   return (
     <>
@@ -101,6 +105,13 @@ export function BranchesView({
                 {/* ساعات العمل إعداد فرع ⇒ مكانها هنا. المحرّر نفسه المستخدم
                     في شاشة الحجوزات — لا نسخة ثانية منه. */}
                 <BranchHoursDrawer branchId={branch.id} branchName={branch.nameAr} canEdit={canUpdate} />
+                {canDelete ? (
+                  <DeleteButton
+                    label={branch.nameAr}
+                    entityLabel="الفرع"
+                    onDelete={() => archiveRecordAction({ entity: 'branch', id: branch.id })}
+                  />
+                ) : null}
               </div>
             </TableCell>
           </TableRow>

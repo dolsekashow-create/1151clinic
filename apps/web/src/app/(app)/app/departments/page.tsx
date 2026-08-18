@@ -55,6 +55,7 @@ async function Content({ searchParams }: PageProps) {
       error={result.success ? null : result.error}
       branches={branches}
       canManage={hasPermission(ctx, 'organizations.departments.manage')}
+      canDelete={hasPermission(ctx, 'organizations.departments.delete')}
       hasOrgScope={ctx.hasOrganizationScope}
     />
   );

@@ -30,17 +30,21 @@ import {
   updateAppointmentAction,
 } from '../actions';
 import { AppointmentTime, StatusBadge } from './appointments-view';
+import { DeleteButton } from '@/shared/components/delete-button';
+import { archiveRecordAction } from '@/modules/shared/archive';
 
 export function AppointmentDetailView({
   appointment,
   statuses,
   canUpdate,
   canCancel,
+  canDelete,
 }: {
   appointment: AppointmentRow;
   statuses: readonly StatusOption[];
   canUpdate: boolean;
   canCancel: boolean;
+  canDelete: boolean;
 }) {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -48,12 +52,32 @@ export function AppointmentDetailView({
         <SummaryCard appointment={appointment} />
         <RescheduleCard appointment={appointment} canUpdate={canUpdate} />
       </div>
-      <StatusCard
-        appointment={appointment}
-        statuses={statuses}
-        canUpdate={canUpdate}
-        canCancel={canCancel}
-      />
+      <div className="space-y-6">
+        <StatusCard
+          appointment={appointment}
+          statuses={statuses}
+          canUpdate={canUpdate}
+          canCancel={canCancel}
+        />
+        {canDelete ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>حذف الحجز</CardTitle>
+              <CardDescription>
+                الحذف ≠ الإلغاء. الإلغاء واقعة تشغيلية تبقى في السجل؛ الحذف يُخفي القيد كليًا
+                ولا يُستخدم إلا لخطأ إدخال.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DeleteButton
+                label={appointment.referenceNo ?? 'هذا الحجز'}
+                entityLabel="الحجز"
+                onDelete={() => archiveRecordAction({ entity: 'appointment', id: appointment.id })}
+              />
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
     </div>
   );
 }

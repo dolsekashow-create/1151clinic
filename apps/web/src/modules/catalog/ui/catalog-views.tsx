@@ -26,6 +26,8 @@ import type { ApiErrorShape, Paginated } from '@erp/types';
 import { AdminResourceTable, type AdminColumn } from '@/shared/components/admin-resource-table';
 import { PublishToggle } from '@/shared/components/publish-toggle';
 import { LinkEditorDrawer } from '@/shared/components/link-editor-drawer';
+import { DeleteButton } from '@/shared/components/delete-button';
+import { archiveRecordAction } from '@/modules/shared/archive';
 import type { ProviderRow, ServiceRow } from '../repository';
 import {
   createProviderAction,
@@ -58,7 +60,7 @@ const SERVICE_COLUMNS: readonly AdminColumn[] = [
   { key: 'duration', label: 'المدة', align: 'center', width: 'w-20' },
   { key: 'status', label: 'الحالة', align: 'center', width: 'w-24' },
   { key: 'public', label: 'الموقع العام', align: 'center', width: 'w-28' },
-  { key: 'actions', label: 'إجراءات', align: 'center', width: 'w-44' },
+  { key: 'actions', label: 'إجراءات', align: 'center', width: 'w-56' },
 ];
 
 export function ServicesView({
@@ -67,12 +69,14 @@ export function ServicesView({
   canCreate,
   canUpdate,
   canPublish,
+  canDelete,
 }: {
   result: Paginated<ServiceRow> | null;
   error: ApiErrorShape | null;
   canCreate: boolean;
   canUpdate: boolean;
   canPublish: boolean;
+  canDelete: boolean;
 }) {
   return (
     <>
@@ -128,6 +132,13 @@ export function ServicesView({
                     load={listServiceBranchStateAction}
                     save={(branchIds) => setServiceBranchesAction({ serviceId: service.id, branchIds })}
                     emptyWarning="الخدمة لن تكون متاحة للحجز في أي فرع."
+                  />
+                ) : null}
+                {canDelete ? (
+                  <DeleteButton
+                    label={service.nameAr}
+                    entityLabel="الخدمة"
+                    onDelete={() => archiveRecordAction({ entity: 'service', id: service.id })}
                   />
                 ) : null}
               </div>
@@ -303,7 +314,7 @@ const PROVIDER_COLUMNS: readonly AdminColumn[] = [
   { key: 'account', label: 'حساب النظام', align: 'center', width: 'w-28' },
   { key: 'status', label: 'الحالة', align: 'center', width: 'w-24' },
   { key: 'public', label: 'الموقع العام', align: 'center', width: 'w-28' },
-  { key: 'actions', label: 'إجراءات', align: 'center', width: 'w-56' },
+  { key: 'actions', label: 'إجراءات', align: 'center', width: 'w-72' },
 ];
 
 export function ProvidersView({
@@ -312,12 +323,14 @@ export function ProvidersView({
   canCreate,
   canManage,
   canPublish,
+  canDelete,
 }: {
   result: Paginated<ProviderRow> | null;
   error: ApiErrorShape | null;
   canCreate: boolean;
   canManage: boolean;
   canPublish: boolean;
+  canDelete: boolean;
 }) {
   return (
     <>
@@ -387,6 +400,13 @@ export function ProvidersView({
                   save={(serviceIds) => setProviderServicesAction({ providerId: provider.id, serviceIds })}
                   emptyWarning="لن يظهر مقدّم الخدمة لأي خدمة، فلا يمكن حجزه."
                 />
+                {canDelete ? (
+                  <DeleteButton
+                    label={provider.nameAr}
+                    entityLabel="مقدّم الخدمة"
+                    onDelete={() => archiveRecordAction({ entity: 'provider', id: provider.id })}
+                  />
+                ) : null}
               </div>
             </TableCell>
           </TableRow>

@@ -16,7 +16,7 @@
     "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,md,json,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json,css}\"",
-    "test:rls": "node --test --test-reporter=spec supabase/tests/rls.test.mjs supabase/tests/users.test.mjs supabase/tests/appointments.test.mjs supabase/tests/admin.test.mjs supabase/tests/public-booking.test.mjs supabase/tests/attendance.test.mjs",
+    "test:rls": "node --test --test-reporter=spec supabase/tests/rls.test.mjs supabase/tests/users.test.mjs supabase/tests/appointments.test.mjs supabase/tests/admin.test.mjs supabase/tests/public-booking.test.mjs supabase/tests/attendance.test.mjs supabase/tests/soft-delete.test.mjs",
     "test:all": "pnpm test && pnpm test:rls",
     "db:seed:generate": "node scripts/generate-seed.mjs",
     "db:types:generate": "node scripts/generate-db-types.mjs",

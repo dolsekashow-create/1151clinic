@@ -25,13 +25,15 @@ import type { ApiErrorShape, Paginated } from '@erp/types';
 import { AdminResourceTable, type AdminColumn } from '@/shared/components/admin-resource-table';
 import type { DepartmentRow } from '../repository';
 import { createDepartmentAction, updateDepartmentAction } from '../actions';
+import { DeleteButton } from '@/shared/components/delete-button';
+import { archiveRecordAction } from '@/modules/shared/archive';
 
 const COLUMNS: readonly AdminColumn[] = [
   { key: 'code', label: 'الكود', width: 'w-36' },
   { key: 'name', label: 'القسم' },
   { key: 'scope', label: 'النطاق', width: 'w-40' },
   { key: 'status', label: 'الحالة', align: 'center', width: 'w-24' },
-  { key: 'actions', label: 'إجراءات', align: 'center', width: 'w-28' },
+  { key: 'actions', label: 'إجراءات', align: 'center', width: 'w-40' },
 ];
 
 export interface DepartmentsViewProps {
@@ -39,6 +41,7 @@ export interface DepartmentsViewProps {
   error: ApiErrorShape | null;
   branches: ReadonlyArray<{ id: string; nameAr: string }>;
   canManage: boolean;
+  canDelete: boolean;
   hasOrgScope: boolean;
 }
 
@@ -47,6 +50,7 @@ export function DepartmentsView({
   error,
   branches,
   canManage,
+  canDelete,
   hasOrgScope,
 }: DepartmentsViewProps) {
   const branchName = (id: string | null) =>
@@ -90,14 +94,23 @@ export function DepartmentsView({
               </Badge>
             </TableCell>
             <TableCell align="center">
-              {canManage ? (
-                <DepartmentFormDrawer
-                  mode="edit"
-                  department={department}
-                  branches={branches}
-                  hasOrgScope={hasOrgScope}
-                />
-              ) : null}
+              <div className="flex items-center justify-center gap-1">
+                {canManage ? (
+                  <DepartmentFormDrawer
+                    mode="edit"
+                    department={department}
+                    branches={branches}
+                    hasOrgScope={hasOrgScope}
+                  />
+                ) : null}
+                {canDelete ? (
+                  <DeleteButton
+                    label={department.nameAr}
+                    entityLabel="القسم"
+                    onDelete={() => archiveRecordAction({ entity: 'department', id: department.id })}
+                  />
+                ) : null}
+              </div>
             </TableCell>
           </TableRow>
         )}

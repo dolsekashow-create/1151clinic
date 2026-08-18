@@ -48,9 +48,12 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     ['branches.update', 'تعديل فرع'],
     // النشر منفصل عن التعديل عمدًا: تعديل فرع داخليًا ≠ إظهاره للعالم
     ['branches.publish', 'نشر/إخفاء فرع على الموقع العام', true],
+    // الحذف منفصل عن التعديل عمدًا: من يصحّح اسم فرع ليس بالضرورة من يُخفيه
+    ['branches.delete', 'حذف فرع', true],
     ['organization.publish', 'نشر/إخفاء المنشأة على الموقع العام', true],
     ['departments.view', 'عرض الأقسام'],
     ['departments.manage', 'إدارة الأقسام'],
+    ['departments.delete', 'حذف قسم', true],
   ]),
 
   ...define('customers', [
@@ -65,10 +68,12 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     ['create', 'إضافة خدمة'],
     ['update', 'تعديل خدمة'],
     ['publish', 'نشر/إخفاء خدمة على الموقع العام', true],
+    ['delete', 'حذف خدمة', true],
     // مقدّمو الخدمة (الأطباء) كيان تشغيلي مستقل عن حسابات المستخدمين — RQ-02
     ['providers.view', 'عرض مقدّمي الخدمة'],
     ['providers.manage', 'إدارة مقدّمي الخدمة'],
     ['providers.publish', 'نشر/إخفاء مقدّم خدمة على الموقع العام', true],
+    ['providers.delete', 'حذف مقدّم خدمة', true],
   ]),
 
   /*
@@ -91,6 +96,9 @@ export const PERMISSIONS: readonly PermissionDefinition[] = [
     ['create', 'إنشاء حجز'],
     ['update', 'تعديل حجز'],
     ['cancel', 'إلغاء حجز'],
+    // ⚠️ الحذف ≠ الإلغاء: الإلغاء واقعة تشغيلية تبقى في السجل، والحذف يُخفي
+    //    القيد كليًا ولا يُستخدم إلا لخطأ إدخال.
+    ['delete', 'حذف حجز', true],
   ]),
 
   ...define('inventory', [

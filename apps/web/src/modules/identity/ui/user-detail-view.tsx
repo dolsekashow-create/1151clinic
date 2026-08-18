@@ -25,6 +25,8 @@ import {
 import type { RoleRow, UserRow } from '../repository';
 import { setUserAssignmentAction, setUserStatusAction, updateUserAction } from '../actions';
 import { StatusBadge, type BranchOption } from './users-view';
+import { DeleteButton } from '@/shared/components/delete-button';
+import { archiveRecordAction } from '@/modules/shared/archive';
 
 export function UserDetailView({
   user,
@@ -35,6 +37,7 @@ export function UserDetailView({
   canManageRoles,
   hasOrgScope,
   isSelf,
+  canDelete,
 }: {
   user: UserRow;
   roles: readonly RoleRow[];
@@ -44,6 +47,7 @@ export function UserDetailView({
   canManageRoles: boolean;
   hasOrgScope: boolean;
   isSelf: boolean;
+  canDelete: boolean;
 }) {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -62,6 +66,23 @@ export function UserDetailView({
       <div className="space-y-6">
         <StatusCard user={user} canUpdate={canUpdate} isSelf={isSelf} />
         <PermissionsCard permissions={permissions} />
+        {canDelete && !isSelf ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>حذف المستخدم</CardTitle>
+              <CardDescription>
+                الإيقاف أفضل في معظم الحالات: يمنع الدخول ويُبقي أثر المستخدم في السجلات.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DeleteButton
+                label={user.fullNameAr}
+                entityLabel="المستخدم"
+                onDelete={() => archiveRecordAction({ entity: 'user', id: user.id })}
+              />
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </div>
   );

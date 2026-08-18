@@ -53,6 +53,7 @@ async function Content({ params }: PageProps) {
       statuses={statuses}
       canUpdate={hasPermission(ctx, 'appointments.update')}
       canCancel={hasPermission(ctx, 'appointments.cancel')}
+      canDelete={hasPermission(ctx, 'appointments.delete')}
     />
   );
 }

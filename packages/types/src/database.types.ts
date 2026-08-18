@@ -2346,6 +2346,13 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      archive_record: {
+        Args: {
+          p_entity: string | null;
+          p_id: string | null;
+        };
+        Returns: undefined;
+      };
       attendance_check_in: {
         Args: {
           p_branch: string | null;
@@ -2384,6 +2391,13 @@ export type Database = {
           p_window_seconds: number | null;
         };
         Returns: { allowed: boolean; remaining: number; reset_at: string }[];
+      };
+      count_dependents: {
+        Args: {
+          p_entity: string | null;
+          p_id: string | null;
+        };
+        Returns: { label: string; total: number }[];
       };
       create_public_booking: {
         Args: {

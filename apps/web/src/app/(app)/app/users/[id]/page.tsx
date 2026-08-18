@@ -68,6 +68,7 @@ async function Content({ params }: PageProps) {
       }
       hasOrgScope={ctx.hasOrganizationScope}
       isSelf={ctx.userId === id}
+      canDelete={hasPermission(ctx, 'identity.users.delete')}
     />
   );
 }

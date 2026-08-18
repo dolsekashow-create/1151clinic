@@ -49,6 +49,7 @@ async function CustomersContent({ searchParams }: PageProps) {
       error={result.success ? null : result.error}
       branches={branches}
       canCreate={hasPermission(ctx, 'customers.create')}
+      canDelete={hasPermission(ctx, 'customers.delete')}
       defaultBranchId={ctx.branchIds[0] ?? null}
     />
   );

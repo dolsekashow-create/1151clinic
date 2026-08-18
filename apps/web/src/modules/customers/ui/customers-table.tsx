@@ -25,6 +25,8 @@ import {
   TableSkeleton,
 } from '@erp/ui';
 import type { ApiErrorShape, Paginated } from '@erp/types';
+import { DeleteButton } from '@/shared/components/delete-button';
+import { archiveRecordAction } from '@/modules/shared/archive';
 import type { CustomerRow } from '../repository';
 import { CustomerCreateDrawer } from './customer-create-drawer';
 
@@ -39,6 +41,7 @@ export interface CustomersTableProps {
   error: ApiErrorShape | null;
   branches: ReadonlyArray<{ id: string; nameAr: string }>;
   canCreate: boolean;
+  canDelete: boolean;
   defaultBranchId: string | null;
 }
 
@@ -54,6 +57,7 @@ export function CustomersTable({
   error,
   branches,
   canCreate,
+  canDelete,
   defaultBranchId,
 }: CustomersTableProps) {
   const router = useRouter();
@@ -175,6 +179,7 @@ export function CustomersTable({
                 <TableHead>الكود</TableHead>
                 <TableHead>الفرع</TableHead>
                 <TableHead align="center">الحالة</TableHead>
+                {canDelete ? <TableHead align="center">إجراءات</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -195,6 +200,17 @@ export function CustomersTable({
                     <TableCell align="center">
                       <Badge variant={status.variant}>{status.label}</Badge>
                     </TableCell>
+                    {canDelete ? (
+                      <TableCell align="center">
+                        <DeleteButton
+                          label={customer.fullNameAr}
+                          entityLabel="العميل"
+                          onDelete={() =>
+                            archiveRecordAction({ entity: 'customer', id: customer.id })
+                          }
+                        />
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 );
               })}
