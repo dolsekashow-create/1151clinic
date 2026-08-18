@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -110,18 +111,17 @@ function HeroSection({
           </div>
         </div>
 
-        {/* لوحة بصرية بلا صورة خارجية — لا نعتمد على أصل غير موجود في المستودع */}
+        {/* صورة الاستقبال — أصل محلي داخل public/، لا مصدر خارجي */}
         <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-gradient-to-br from-[var(--clinic-blush)] via-background to-[var(--clinic-rose)]/15 ring-1 ring-border/60">
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
-              <span className="flex size-20 items-center justify-center rounded-full bg-background/80 text-[var(--clinic-rose)] shadow-sm">
-                <Sparkles className="size-9" aria-hidden />
-              </span>
-              <p className="text-lg font-semibold text-clinic-ink">رعاية تجميلية متكاملة</p>
-              <p className="max-w-xs text-sm text-muted-foreground">
-                من الاستشارة الأولى حتى المتابعة بعد الجلسة.
-              </p>
-            </div>
+          <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-[var(--clinic-blush)] ring-1 ring-border/60">
+            <Image
+              src="/hero-reception.jpg"
+              alt="منطقة الاستقبال في عيادات 14Clinic"
+              fill
+              priority
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              className="object-cover"
+            />
           </div>
 
           <div className="absolute -bottom-5 start-4 flex items-center gap-3 rounded-2xl bg-background px-4 py-3 shadow-lg ring-1 ring-border/60 lg:start-8">
