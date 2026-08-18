@@ -557,6 +557,64 @@ describe('دوال مخطط app غير قابلة للاستدعاء من الع
     `SECURITY DEFINER` وتُعيد فحص النشر والترابط داخلها، ولا تُرجع أي بيانات
     شخصية. أي دالة جديدة تُمنح لـ`anon` تُفشل هذا الاختبار حتى تُضاف بقرار واعٍ.
   */
+  /*
+    ⚠️ انحدار لخلل حقيقي: كان `service_role` يملك EXECUTE على عدّاد الحد من
+       المعدّل لكنه **لا يملك USAGE على مخطط app**، فيفشل كل نداء ويُمرَّر الطلب
+       (فشل مفتوح) — أي أن الحد كان معطّلًا بصمت على كل النقاط العامة.
+
+       سبب عدم اكتشافه: كل الاختبارات تعمل بدور `authenticated`، والاختبار
+       الوحيد على العدّاد كان **سلبيًا** (أن `anon` يُرفض). إثبات الرفض لا
+       يُثبت أن المسار المشروع يعمل.
+  */
+  it('⭐ service_role يصل إلى مخطط app فعليًا (لا EXECUTE بلا USAGE)', async () => {
+    const { rows: usage } = await client.query(
+      "select has_schema_privilege('service_role', 'app', 'usage') as ok",
+    );
+    assert.equal(usage[0].ok, true, 'service_role بلا USAGE ⇒ الحد من المعدّل معطّل بصمت');
+
+    // والأهم: نداء فعلي ينجح لا مجرد وجود صلاحية
+    await client.query('begin');
+    try {
+      await client.query('set local role service_role');
+      const { rows } = await client.query(
+        "select * from app.consume_rate_limit('regression-key', 5, 60)",
+      );
+      assert.equal(rows[0].allowed, true, 'العدّاد لم يُرجع قرارًا');
+    } finally {
+      await client.query('rollback');
+    }
+  });
+
+  /*
+    ⚠️ تصحيح توقّع خاطئ كتبتُه أولًا: افترضتُ أن `anon` يجب ألا يملك USAGE على
+       `app`. الواقع أنه يملكها منذ ترحيل الأساس **بالضرورة**: سياسات RLS
+       للنشر العام تستدعي `app.is_org_published`، وتعبير السياسة يُنفَّذ بهوية
+       المستخدم — فبلا USAGE يفشل كل قراءة عامة.
+
+       الحماية ليست في حجب المخطط بل في **قائمة الدوال المسموح تنفيذها**،
+       وهي مغطّاة بالاختبار أعلاه. USAGE على المخطط لا يمنح تنفيذ أي دالة.
+  */
+  it('USAGE على مخطط app مقصور على الأدوار التي تحتاجه', async () => {
+    const { rows } = await client.query(`
+      select
+        has_schema_privilege('anon', 'app', 'usage')          as anon_usage,
+        has_schema_privilege('authenticated', 'app', 'usage') as auth_usage,
+        has_schema_privilege('service_role', 'app', 'usage')  as service_usage
+    `);
+    assert.deepEqual(
+      rows[0],
+      { anon_usage: true, auth_usage: true, service_usage: true },
+      'تغيّر وصول دور إلى مخطط app — راجع الأثر قبل القبول',
+    );
+  });
+
+  it('USAGE وحده لا يمنح تنفيذ دالة غير ممنوحة', async () => {
+    const { rows } = await client.query(
+      "select has_function_privilege('anon', 'app.apply_rls(text,text,text,text,text,boolean,boolean,boolean)', 'execute') as ok",
+    );
+    assert.equal(rows[0].ok, false, 'anon يستطيع تنفيذ مولّد السياسات ⇒ تصعيد كامل');
+  });
+
   it('دور anon لا يملك سوى بوابة النشر ودوال الحجز العام', async () => {
     const { rows } = await client.query(`
       select p.proname

@@ -18,12 +18,25 @@ import { z } from 'zod';
 
 /* --------------------------------- عام ----------------------------------- */
 
+/**
+ * ⚠️ نفس علاج مخطط الخادم: المتغيّر الفارغ = غير مضبوط.
+ *    هنا الأثر أخبث — التحقق يستخدم `safeParse` مع رجوع إلى الافتراضيات، فمتغيّر
+ *    فارغ واحد كان يُفشل التحقق كله فتُهمل **بقية القيم الصحيحة** ويعمل التطبيق
+ *    بعنوان Supabase الافتراضي بلا أي رسالة مفهومة.
+ */
+const emptyAsUndefined = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), schema);
+
 const publicSchema = z.object({
-  NEXT_PUBLIC_APP_NAME: z.string().min(1).default('النظام المركزي لإدارة الفروع'),
-  NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
-  NEXT_PUBLIC_APP_ENV: z.enum(['development', 'staging', 'production']).default('development'),
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
+  NEXT_PUBLIC_APP_NAME: emptyAsUndefined(
+    z.string().min(1).default('النظام المركزي لإدارة الفروع'),
+  ),
+  NEXT_PUBLIC_APP_URL: emptyAsUndefined(z.string().url().default('http://localhost:3000')),
+  NEXT_PUBLIC_APP_ENV: emptyAsUndefined(
+    z.enum(['development', 'staging', 'production']).default('development'),
+  ),
+  NEXT_PUBLIC_SUPABASE_URL: emptyAsUndefined(z.string().url().optional()),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: emptyAsUndefined(z.string().min(1).optional()),
 });
 
 /**
@@ -88,26 +101,38 @@ export function supabaseProjectRef(): string | null {
 
 /* -------------------------------- الخادم --------------------------------- */
 
+/**
+ * يعامل السلسلة الفارغة كأنها غير موجودة.
+ *
+ * ⚠️ ليس تساهلًا — بل تصحيح خلل حقيقي: من ينسخ `.env.example` كما هو يحصل على
+ *    `SUPABASE_SECRET_KEY=` و `INTERNAL_WEBHOOK_SECRET=` بقيم **فارغة**. الفارغ
+ *    كان يفشل `.min()` فيُسقط `serverEnv()` كله، فيرمي كل فعل في الخادم
+ *    INTERNAL_ERROR — بما فيه تسجيل الدخول. المتغيّر الفارغ يعني «غير مضبوط»
+ *    لا «قيمة غير صالحة»، والتحقق يجب أن يقع بعد ذلك لا قبله.
+ */
+const optionalEnv = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), schema);
+
 const serverSchema = z.object({
-  APP_ENV: z.enum(['development', 'staging', 'production']).default('development'),
+  APP_ENV: optionalEnv(z.enum(['development', 'staging', 'production']).default('development')),
   /** ⛔ يتجاوز RLS. اختياري عمدًا: النظام يعمل كاملًا بدونه. */
-  SUPABASE_SECRET_KEY: z
-    .string()
-    .min(1)
-    .optional()
-    .transform((value) => (value === '' ? undefined : value)),
-  INTERNAL_WEBHOOK_SECRET: z.string().min(16).optional(),
-  RATE_LIMIT_ENABLED: z
-    .enum(['true', 'false'])
-    .default('true')
-    .transform((value) => value === 'true'),
-  NOTIFICATIONS_SMS_PROVIDER: z.string().default('console'),
-  NOTIFICATIONS_SMS_SENDER_ID: z.string().optional(),
-  NOTIFICATIONS_EMAIL_PROVIDER: z.string().default('console'),
-  LEGACY_INTEGRATION_ENABLED: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((value) => value === 'true'),
+  SUPABASE_SECRET_KEY: optionalEnv(z.string().min(1).optional()),
+  INTERNAL_WEBHOOK_SECRET: optionalEnv(z.string().min(16).optional()),
+  RATE_LIMIT_ENABLED: optionalEnv(
+    z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+  ),
+  NOTIFICATIONS_SMS_PROVIDER: optionalEnv(z.string().default('console')),
+  NOTIFICATIONS_SMS_SENDER_ID: optionalEnv(z.string().optional()),
+  NOTIFICATIONS_EMAIL_PROVIDER: optionalEnv(z.string().default('console')),
+  LEGACY_INTEGRATION_ENABLED: optionalEnv(
+    z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+  ),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;
